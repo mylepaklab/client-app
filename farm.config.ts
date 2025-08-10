@@ -1,7 +1,10 @@
+import { config as configDotEnv } from "dotenv";
+
+import path from "path";
 import { defineConfig } from "@farmfe/core";
 import farmPostcssPlugin from "@farmfe/js-plugin-postcss";
 
-import path from "path";
+configDotEnv();
 
 export default defineConfig({
 	plugins: ["@farmfe/plugin-react", farmPostcssPlugin()],
@@ -11,6 +14,13 @@ export default defineConfig({
 		resolve: {
 			alias: {
 				"~/": path.join(process.cwd(), "src/"),
+			},
+		},
+		define: {
+			"import.meta.env": {
+				FARM_API_URL: JSON.stringify(
+					process.env.API_URL || "http://localhost:8080/api"
+				),
 			},
 		},
 	},

@@ -1,5 +1,61 @@
 @import "tailwindcss";
 
+:root {
+	--brand-50: #fef8f2;
+	--brand-100: #fdf1e6;
+	--brand-200: #fce8e0;
+	--brand-300: #f9bba0;
+	--brand-400: #f68b3c;
+	--brand-500: #f57c20;
+	--brand-600: #d76b1d;
+	--brand-700: #b75a1a;
+	--brand-800: #9a4a16;
+	--brand-900: #7d3b13;
+	--cocoa: #724e2b;
+	--charcoal: #35210c;
+	--ink: #1f1f1f;
+	--surface: #fffdf9;
+}
+
+@theme inline {
+	--color-brand-50: var(--brand-50);
+	--color-brand-100: var(--brand-100);
+	--color-brand-200: var(--brand-200);
+	--color-brand-300: var(--brand-300);
+	--color-brand-400: var(--brand-400);
+	--color-brand-500: var(--brand-500);
+	--color-brand-600: var(--brand-600);
+	--color-brand-700: var(--brand-700);
+	--color-brand-800: var(--brand-800);
+	--color-brand-900: var(--brand-900);
+	--color-cocoa: var(--cocoa);
+	--color-charcoal: var(--charcoal);
+	--color-ink: var(--ink);
+	--color-surface: var(--surface);
+}
+
+@media (prefers-color-scheme: dark) {
+	.dark\:bg-brand-900\/20 {
+		background-color: rgb(90 49 21 / 0.2);
+	}
+
+	.dark\:bg-blue-900\/20 {
+		background-color: rgb(30 58 138 / 0.2);
+	}
+
+	.dark\:bg-purple-900\/20 {
+		background-color: rgb(88 28 135 / 0.2);
+	}
+
+	.dark\:bg-green-900\/20 {
+		background-color: rgb(20 83 45 / 0.2);
+	}
+
+	.dark\:text-brand-400 {
+		color: #f7c79b;
+	}
+}
+
 html,
 body,
 #root {

@@ -4,7 +4,7 @@ import path from "path";
 import { defineConfig } from "@farmfe/core";
 import farmPostcssPlugin from "@farmfe/js-plugin-postcss";
 
-configDotEnv();
+configDotEnv({ path: path.resolve(process.cwd(), "./env") });
 
 export default defineConfig({
 	plugins: ["@farmfe/plugin-react", farmPostcssPlugin()],
@@ -17,11 +17,7 @@ export default defineConfig({
 			},
 		},
 		define: {
-			"import.meta.env": {
-				FARM_API_URL: JSON.stringify(
-					process.env.API_URL || "http://localhost:8080/api"
-				),
-			},
+			"import.meta.env.FARM_API_URL": JSON.stringify(process.env.FARM_API_URL),
 		},
 	},
 	envDir: "./env",

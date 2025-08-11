@@ -1,7 +1,5 @@
 import Axios, { InternalAxiosRequestConfig } from "axios";
 
-import { env } from "~/configs/env.config";
-
 function authRequestInterceptor(config: InternalAxiosRequestConfig) {
 	if (config.headers) {
 		config.headers.Accept = "application/json";
@@ -12,7 +10,7 @@ function authRequestInterceptor(config: InternalAxiosRequestConfig) {
 }
 
 export const api = Axios.create({
-	baseURL: env.API_URL,
+	baseURL: import.meta.env.FARM_API_URL,
 });
 
 api.interceptors.request.use(authRequestInterceptor);

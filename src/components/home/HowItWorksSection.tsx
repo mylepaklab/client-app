@@ -90,7 +90,7 @@ export function HowItWorksSection({
 							<figure className="rounded-2xl bg-gradient-to-br from-brand-100 to-brand-200 border border-brand-200 aspect-video flex items-center justify-center mb-4">
 								<figure className="size-full">
 									<img
-										src="/public/assets/images/architecture.webp"
+										src="/assets/images/architecture.webp"
 										alt="Architecture diagram"
 										className="w-full h-full object-cover rounded-2xl"
 									/>

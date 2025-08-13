@@ -9,7 +9,7 @@ export function Footer() {
 						<div className="flex items-center space-x-3 mb-6">
 							<figure className="w-10 h-10 flex items-center justify-center">
 								<img
-									src="/public/assets/images/main.webp"
+									src="/assets/images/main.webp"
 									alt="BIMTranslator logo"
 									className="max-w-full h-auto mx-auto"
 									loading="lazy"

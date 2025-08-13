@@ -12,4 +12,4 @@ RUN pnpm build
 ENV PORT=8080
 EXPOSE 8080
 
-CMD ["sh", "-c", "pnpm dlx serve -s dist -l $PORT"]
+CMD ["sh", "-c", "pnpm dlx serve -s dist -l $PORT", "dev"]

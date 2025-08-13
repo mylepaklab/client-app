@@ -7,6 +7,7 @@ import { ProgrammeFitSection } from "~/components/home/ProgrammeFitSection";
 import { LivePreviewSection } from "~/components/home/LivePreviewSection";
 import { EvidenceSection } from "~/components/home/EvidenceSection";
 import { FaqSection } from "~/components/home/FaqSection";
+import { OurTeamSection } from "~/components/home/our-team";
 
 import { useAnimation } from "~/hooks/use-animation.hook";
 
@@ -41,6 +42,8 @@ export function Page() {
 					fadeInUp={fadeInUp}
 					staggerContainer={staggerContainer}
 				/>
+
+				<OurTeamSection />
 
 				<FaqSection fadeInUp={fadeInUp} staggerContainer={staggerContainer} />
 			</main>

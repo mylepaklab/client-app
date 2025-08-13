@@ -19,6 +19,7 @@ export default defineConfig({
 		define: {
 			"import.meta.env.FARM_API_URL": JSON.stringify(process.env.FARM_API_URL),
 		},
+		persistentCache: false,
 	},
 	envDir: "./env",
 	publicDir: "./public",

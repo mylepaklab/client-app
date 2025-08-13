@@ -6,7 +6,8 @@
 		"start": "farm start",
 		"build": "farm build",
 		"preview": "farm preview",
-		"clean": "farm clean"
+		"clean": "farm clean",
+		"docker": "docker-compose up --build"
 	},
 	"dependencies": {
 		"@emotion/is-prop-valid": "^1.3.1",

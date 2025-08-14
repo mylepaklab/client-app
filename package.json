@@ -29,7 +29,6 @@
 		"@farmfe/cli": "^1.0.4",
 		"@farmfe/core": "^1.6.7",
 		"@farmfe/plugin-react": "^1.2.0",
-		"@farmfe/runtime-plugin-import-meta": "^0.2.3",
 		"@types/react": "18",
 		"@types/react-dom": "18",
 		"core-js": "^3.36.1",

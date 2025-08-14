@@ -11,17 +11,3 @@ services:
     environment:
       - FARM_API_URL=${FARM_API_URL}
     restart: unless-stopped
-
-  # Development service (optional - for local development)
-  app-dev:
-    build: .
-    ports:
-      - "3000:3000"
-    volumes:
-      - .:/app
-      - /app/node_modules
-    env_file:
-      - .env
-    command: pnpm dev
-    profiles:
-      - dev

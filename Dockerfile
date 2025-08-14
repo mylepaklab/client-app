@@ -9,7 +9,6 @@ RUN pnpm install --frozen-lockfile
 
 COPY . .
 
-# Build arguments for environment variables
 ARG FARM_API_URL
 ENV FARM_API_URL=$FARM_API_URL
 

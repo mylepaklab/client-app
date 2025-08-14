@@ -15,7 +15,7 @@ export function TestConnectionPage() {
 
 		try {
 			const result = await api.get(
-				`/translate_string?text_to_translate=${encodeURIComponent(text)}`
+				`translate_string?text_to_translate=${encodeURIComponent(text)}`
 			);
 			setResponse(result);
 		} catch (err: any) {

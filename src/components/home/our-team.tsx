@@ -1,27 +1,27 @@
-export const OurTeamSection = () => {
-	const teamMembers = [
-		{
-			name: "Fatin Nadiah",
-			role: "Backend Developer",
-			image: "https://tailone.tailwindtemplate.net/src/img/dummy/avatar3.png",
-		},
-		{
-			name: "Fatin Najihah",
-			role: "Machine Learning Engineer",
-			image: "https://tailone.tailwindtemplate.net/src/img/dummy/avatar3.png",
-		},
-		{
-			name: "Rahman Nurudin",
-			role: "Frontend Developer",
-			image: "https://tailone.tailwindtemplate.net/src/img/dummy/avatar2.png",
-		},
-		{
-			name: "Prof. Muhammad Azmi Ayub",
-			role: "Machine Learning Engineer",
-			image: "https://tailone.tailwindtemplate.net/src/img/dummy/avatar4.png",
-		},
-	];
+const teamMembers = [
+	{
+		name: "Fatin Nadiah",
+		role: "Backend Developer",
+		image: "https://tailone.tailwindtemplate.net/src/img/dummy/avatar3.png",
+	},
+	{
+		name: "Fatin Najihah",
+		role: "Machine Learning Engineer",
+		image: "https://tailone.tailwindtemplate.net/src/img/dummy/avatar3.png",
+	},
+	{
+		name: "Rahman Nurudin",
+		role: "Frontend Developer",
+		image: "https://tailone.tailwindtemplate.net/src/img/dummy/avatar2.png",
+	},
+	{
+		name: "Prof. Muhammad Azmi Ayub",
+		role: "Machine Learning Engineer",
+		image: "https://tailone.tailwindtemplate.net/src/img/dummy/avatar4.png",
+	},
+];
 
+export const OurTeamSection = () => {
 	return (
 		<section id="team" className="py-24 px-4 sm:px-6 lg:px-8 bg-surface">
 			<div className="container xl:max-w-6xl mx-auto">
@@ -29,35 +29,26 @@ export const OurTeamSection = () => {
 					<h2 className="text-4xl md:text-5xl leading-normal mb-6 font-bold text-charcoal">
 						<span className="font-light">Meet Our</span> Team
 					</h2>
-					<div className="flex items-center justify-center space-x-4 mb-4">
-						<div className="h-px bg-gradient-to-r from-transparent to-brand-300 w-20"></div>
-						<div className="w-3 h-3 rounded-full bg-gradient-to-br from-brand-500 to-brand-700"></div>
-						<div className="h-px bg-gradient-to-l from-transparent to-brand-300 w-20"></div>
-					</div>
 					<p className="text-lg text-cocoa/80 max-w-2xl mx-auto">
 						Meet the passionate innovators behind our BIM translation technology
 					</p>
 				</header>
 
-				{/* Team Grid */}
 				<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-6">
-					{teamMembers.map((member, index) => (
-						<div key={index} className="group">
-							<div className="relative overflow-hidden bg-white rounded-2xl border border-brand-200">
-								{/* Avatar Section */}
+					{teamMembers?.map((member) => (
+						<div key={member.name} className="group">
+							<div className="relative overflow-hidden bg-white rounded-2xl border border-brand-200 shadow-lg transition-transform transform hover:scale-105 min-h-[442px] flex flex-col items-center justify-center h-full">
 								<div className="relative overflow-hidden p-8">
 									<div className="relative">
 										<img
 											src={member.image}
-											className="w-32 h-32 mx-auto rounded-full bg-brand-50 shadow-lg ring-4 ring-brand-100 transition-all duration-300 group-hover:ring-brand-300"
+											className="w-32 h-32 mx-auto rounded-full bg-brand-50 shadow-lg ring-4 ring-brand-100 transition-all duration-300 group-hover:ring-brand-300 "
 											alt={member.name}
 										/>
-										<div className="absolute inset-0 rounded-full bg-gradient-to-t from-brand-500/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
 									</div>
 								</div>
 
-								{/* Info Section */}
-								<div className="px-8 pt-8 mb-10 text-center">
+								<div className="px-8 pt-8 text-center">
 									<h3 className="text-xl leading-normal font-bold mb-2 text-charcoal">
 										{member.name}
 									</h3>
@@ -65,7 +56,6 @@ export const OurTeamSection = () => {
 										{member.role}
 									</p>
 
-									{/* Social Icons */}
 									<div className="flex justify-center space-x-3">
 										<a
 											className="w-10 h-10 flex items-center justify-center rounded-xl bg-brand-100 text-brand-600 hover:bg-brand-500 hover:text-white transition-all duration-300 transform hover:scale-110"

@@ -60,9 +60,6 @@ importers:
       '@farmfe/plugin-react':
         specifier: ^1.2.0
         version: 1.2.6
-      '@farmfe/runtime-plugin-import-meta':
-        specifier: ^0.2.3
-        version: 0.2.3
       '@types/react':
         specifier: '18'
         version: 18.3.23

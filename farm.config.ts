@@ -4,7 +4,7 @@ import path from "path";
 import { defineConfig } from "@farmfe/core";
 import farmPostcssPlugin from "@farmfe/js-plugin-postcss";
 
-configDotEnv({ path: path.resolve(process.cwd(), "env", ".env") });
+configDotEnv({ path: path.resolve(process.cwd(), "./.env") });
 
 export default defineConfig({
 	plugins: ["@farmfe/plugin-react", farmPostcssPlugin()],
@@ -21,6 +21,6 @@ export default defineConfig({
 		},
 		persistentCache: false,
 	},
-	envDir: "./env",
+	envDir: "./",
 	publicDir: "./public",
 });

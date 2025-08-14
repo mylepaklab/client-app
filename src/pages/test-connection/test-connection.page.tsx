@@ -6,6 +6,8 @@ export function TestConnectionPage() {
 	const [response, setResponse] = useState<any>(null);
 	const [error, setError] = useState<string | null>(null);
 
+	const [text, setText] = useState<string>("");
+
 	const testConnection = async () => {
 		setIsLoading(true);
 		setError(null);
@@ -13,7 +15,7 @@ export function TestConnectionPage() {
 
 		try {
 			const result = await api.get(
-				"/translate_string?text_to_translate=I%20am%20Ann"
+				`/translate_string?text_to_translate=${encodeURIComponent(text)}`
 			);
 			setResponse(result);
 		} catch (err: any) {
@@ -31,13 +33,21 @@ export function TestConnectionPage() {
 					Test API Connection
 				</h1>
 
+				<input
+					type="text"
+					value={text}
+					onChange={(e) => setText(e.target.value)}
+					placeholder="Enter text to translate"
+					className="border border-gray-300 rounded-lg p-2 mb-4 w-full"
+				/>
+
 				<div className="text-center mb-8">
 					<button
 						onClick={testConnection}
 						disabled={isLoading}
 						className="bg-brand-700 text-white px-6 py-3 rounded-lg font-semibold hover:bg-brand-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
 					>
-						{isLoading ? "Testing..." : "Test Translation API"}
+						{isLoading ? "Loading..." : "Test Translation API"}
 					</button>
 				</div>
 
@@ -53,7 +63,8 @@ export function TestConnectionPage() {
 						<div className="p-4 bg-green-50 border border-green-200 rounded-lg">
 							<h3 className="font-semibold text-green-800 mb-2">Response:</h3>
 							<pre className="text-sm text-green-700 whitespace-pre-wrap overflow-x-auto">
-								{JSON.stringify(response, null, 2)}
+								original: {response?.original} <br /> <br />
+								translated: {response?.translated}
 							</pre>
 						</div>
 					)}

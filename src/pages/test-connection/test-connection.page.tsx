@@ -6,7 +6,7 @@ export function TestConnectionPage() {
 	const [response, setResponse] = useState<any>(null);
 	const [error, setError] = useState<string | null>(null);
 
-	const [text, setText] = useState<string>("I am Ann");
+	const [text, setText] = useState<string>("");
 
 	const testConnection = async () => {
 		setIsLoading(true);

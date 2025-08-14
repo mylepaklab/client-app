@@ -1,0 +1,39 @@
+steps:
+  # Build the container image with Nginx
+  - name: "gcr.io/cloud-builders/docker"
+    args:
+      - "build"
+      - "--build-arg"
+      - "FARM_API_URL=https://flask-api-ann-jxtsjymlfa-uc.a.run.app"
+      - "-t"
+      - "gcr.io/$PROJECT_ID/my-lepak-lab-nginx"
+      - "."
+
+  # Push the container image to Container Registry
+  - name: "gcr.io/cloud-builders/docker"
+    args: ["push", "gcr.io/$PROJECT_ID/my-lepak-lab-nginx"]
+
+  # Deploy container image to Cloud Run
+  - name: "gcr.io/cloud-builders/gcloud"
+    args:
+      - "run"
+      - "deploy"
+      - "my-lepak-lab"
+      - "--image"
+      - "gcr.io/$PROJECT_ID/my-lepak-lab-nginx"
+      - "--region"
+      - "us-central1"
+      - "--platform"
+      - "managed"
+      - "--allow-unauthenticated"
+      - "--port"
+      - "8080"
+      - "--memory"
+      - "512Mi"
+      - "--cpu"
+      - "1"
+      - "--max-instances"
+      - "10"
+
+images:
+  - "gcr.io/$PROJECT_ID/my-lepak-lab-nginx"

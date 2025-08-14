@@ -10,7 +10,7 @@ function authRequestInterceptor(config: InternalAxiosRequestConfig) {
 }
 
 export const api = Axios.create({
-	baseURL: FARM_API_URL,
+	baseURL: import.meta.env.FARM_API_URL,
 });
 
 api.interceptors.request.use(authRequestInterceptor);

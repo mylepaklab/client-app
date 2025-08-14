@@ -2,6 +2,18 @@ version: "3.8"
 
 services:
   app:
+    build:
+      context: .
+      args:
+        FARM_API_URL: ${FARM_API_URL}
+    ports:
+      - "8080:8080"
+    environment:
+      - FARM_API_URL=${FARM_API_URL}
+    restart: unless-stopped
+
+  # Development service (optional - for local development)
+  app-dev:
     build: .
     ports:
       - "3000:3000"
@@ -10,3 +22,6 @@ services:
       - /app/node_modules
     env_file:
       - .env
+    command: pnpm dev
+    profiles:
+      - dev

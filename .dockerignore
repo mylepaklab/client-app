@@ -3,10 +3,16 @@ node_modules/
 dist/
 build/
 .dockerignore
+.git
+.gitignore
 
-# Environment files
+# Environment files (keep .env for build args)
 .env.local
 .env.*.local
+
+# Development files
+scripts/
+README.md
 
 # Logs
 *.log

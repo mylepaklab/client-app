@@ -1,0 +1,5 @@
+{
+	"labels": ["Class 1", "Class 2", "Class 3"],
+	"modelName": "Sample Model",
+	"description": "This is a placeholder metadata file. Replace with your actual Teachable Machine model files."
+}

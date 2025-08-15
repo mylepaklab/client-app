@@ -34,7 +34,6 @@ export function HandPOC() {
 	const [gestureConfidence, setGestureConfidence] = useState<number>(0);
 	const animationFrameRef = useRef<number>();
 
-	// Initialize MediaPipe Hand Landmarker
 	useEffect(() => {
 		const initializeHandLandmarker = async () => {
 			try {

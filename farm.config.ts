@@ -8,7 +8,13 @@ configDotEnv({ path: path.resolve(process.cwd(), "./.env") });
 
 export default defineConfig({
 	plugins: ["@farmfe/plugin-react", farmPostcssPlugin()],
-	server: { port: 3000 },
+	server: { 
+		port: 3000,
+		headers: {
+			'Cross-Origin-Embedder-Policy': 'require-corp',
+			'Cross-Origin-Opener-Policy': 'same-origin',
+		}
+	},
 	compilation: {
 		external: ["node:fs"],
 		resolve: {
@@ -22,6 +28,9 @@ export default defineConfig({
 			),
 		},
 		persistentCache: false,
+		assets: {
+			publicDir: './public',
+		},
 	},
 	envDir: "./",
 	publicDir: "./public",

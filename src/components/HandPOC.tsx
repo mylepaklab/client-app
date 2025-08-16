@@ -1,8 +1,15 @@
 import { useRef, useEffect, useState, useCallback } from "react";
 import Webcam from "react-webcam";
-import * as tf from "@tensorflow/tfjs";
+import * as tmImage from "@teachablemachine/image";
 
-const MAP = {
+type TmModel = {
+	predict: (
+		img: HTMLVideoElement | HTMLImageElement | HTMLCanvasElement,
+		flipHorizontal?: boolean
+	) => Promise<Array<{ className: string; probability: number }>>;
+};
+
+const MAP: Record<string, string> = {
 	A: "Letter A",
 	N: "Letter N",
 	Stop: "Stop",
@@ -10,334 +17,274 @@ const MAP = {
 	none: "",
 };
 
+const MODEL_BASE = "/model/";
 const CONFIDENCE_THRESHOLD = 0.8;
 
 export function HandPOC() {
 	const webcamRef = useRef<Webcam>(null);
-	const [model, setModel] = useState<tf.LayersModel | null>(null);
+
+	const [tmModel, setTmModel] = useState<TmModel | null>(null);
 	const [labels, setLabels] = useState<string[]>([]);
+
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
-	const [currentGesture, setCurrentGesture] = useState<string>("none");
-	const [gestureConfidence, setGestureConfidence] = useState<number>(0);
-	const [gestureMeaning, setGestureMeaning] = useState<string>("");
-	const animationFrameRef = useRef<number>();
 
-	const predict = useCallback(async () => {
-		if (
-			!model ||
-			!webcamRef.current?.video ||
-			webcamRef.current.video.readyState !== 4
-		) {
-			return;
-		}
+	const [camReady, setCamReady] = useState(false);
+	const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
+	const [deviceId, setDeviceId] = useState<string | undefined>(undefined);
 
-		try {
-			const video = webcamRef.current.video;
+	const [currentGesture, setCurrentGesture] = useState("none");
+	const [gestureConfidence, setGestureConfidence] = useState(0);
+	const [gestureMeaning, setGestureMeaning] = useState("");
+	const rafRef = useRef<number>();
 
-			const img = tf.browser
-				.fromPixels(video)
-				.resizeBilinear([224, 224])
-				.expandDims(0)
-				.toFloat()
-				.div(255.0);
-
-			let predictions: tf.Tensor;
-			if (model instanceof tf.GraphModel) {
-				predictions = model.predict(img) as tf.Tensor;
-			} else {
-				predictions = model.predict(img) as tf.Tensor;
-			}
-
-			const predictionData = await predictions.data();
-
-			const maxProbability = Math.max(...Array.from(predictionData));
-			const predictedClassIndex =
-				Array.from(predictionData).indexOf(maxProbability);
-			const predictedLabel = labels[predictedClassIndex] || "unknown";
-
-			if (maxProbability >= CONFIDENCE_THRESHOLD) {
-				setCurrentGesture(predictedLabel);
-				setGestureConfidence(maxProbability);
-				setGestureMeaning(MAP[predictedLabel as keyof typeof MAP] || "");
-			} else {
-				setCurrentGesture("none");
-				setGestureConfidence(maxProbability);
-				setGestureMeaning("");
-			}
-
-			img.dispose();
-			predictions.dispose();
-		} catch (err: any) {
-			console.error("Prediction error:", err);
-		}
-	}, [model, labels]);
-
+	// Ask for camera permission, enumerate devices
 	useEffect(() => {
-		const runPrediction = () => {
-			predict();
-			animationFrameRef.current = requestAnimationFrame(runPrediction);
-		};
-
-		if (model && labels.length > 0) {
-			animationFrameRef.current = requestAnimationFrame(runPrediction);
-		}
-
-		return () => {
-			if (animationFrameRef.current) {
-				cancelAnimationFrame(animationFrameRef.current);
+		const ask = async () => {
+			try {
+				const stream = await navigator.mediaDevices.getUserMedia({
+					video: true,
+					audio: false,
+				});
+				setCamReady(true);
+				const list = await navigator.mediaDevices.enumerateDevices();
+				const cams = list.filter((d) => d.kind === "videoinput");
+				setDevices(cams);
+				if (cams.length > 0) setDeviceId((prev) => prev || cams[0].deviceId);
+				stream.getTracks().forEach((t) => t.stop());
+			} catch (e: any) {
+				setError(
+					`Camera access failed. ${e?.name || ""} ${e?.message || ""}`.trim()
+				);
 			}
 		};
-	}, [model, labels, predict]);
+		ask();
+	}, []);
 
+	// Load TM model and metadata
 	useEffect(() => {
-		const loadModel = async () => {
+		const load = async () => {
 			try {
 				setIsLoading(true);
 				setError(null);
 
-				await tf.ready();
-				// Optional, pick one you prefer: 'webgl' or 'wasm'
-				// await tf.setBackend('webgl');
-
-				const [loadedModel, metadataResponse] = await Promise.all([
-					tf.loadLayersModel("/model/model.json"),
-					fetch("/model/metadata.json"),
+				const [model, metaRes] = await Promise.all([
+					tmImage.load(MODEL_BASE + "model.json", MODEL_BASE + "metadata.json"),
+					fetch(MODEL_BASE + "metadata.json"),
 				]);
-				const metadata = await metadataResponse.json();
 
-				setModel(loadedModel);
-				setLabels(metadata.labels || []);
-				setIsLoading(false);
+				if (!metaRes.ok) throw new Error("metadata.json not found");
+				const meta = await metaRes.json();
 
-				console.log("Loaded as LayersModel", {
-					inputs: loadedModel.inputs,
-					outputs: loadedModel.outputs,
-					labels: metadata.labels,
-				});
-			} catch (err: any) {
-				setError(`Failed to load model: ${err.message}`);
+				setTmModel(model as unknown as TmModel);
+				setLabels(meta.labels || []);
+			} catch (e: any) {
+				setError(`Failed to load model. ${e?.message || e}`);
+			} finally {
 				setIsLoading(false);
-				console.error("Model loading error:", err);
 			}
 		};
-		loadModel();
+		load();
 	}, []);
 
+	// Predict per frame
+	const predict = useCallback(async () => {
+		if (!tmModel) return;
+		const video = webcamRef.current?.video as HTMLVideoElement | undefined;
+		if (!video || video.readyState !== 4) return;
+
+		try {
+			// Second argument flips input horizontally for selfie view
+			const preds = await tmModel.predict(video, true);
+			// Pick top prediction
+			let top = preds[0];
+			for (const p of preds) if (p.probability > top.probability) top = p;
+
+			if (top.probability >= CONFIDENCE_THRESHOLD) {
+				setCurrentGesture(top.className);
+				setGestureMeaning(MAP[top.className] || "");
+			} else {
+				setCurrentGesture("none");
+				setGestureMeaning("");
+			}
+			setGestureConfidence(top.probability);
+		} catch (e) {
+			// Keep UI alive
+			console.error("Prediction error", e);
+		}
+	}, [tmModel]);
+
+	// Start loop when ready
+	useEffect(() => {
+		const loop = () => {
+			predict();
+			rafRef.current = requestAnimationFrame(loop);
+		};
+		if (camReady && tmModel && labels.length > 0) {
+			rafRef.current = requestAnimationFrame(loop);
+		}
+		return () => {
+			if (rafRef.current) cancelAnimationFrame(rafRef.current);
+		};
+	}, [camReady, tmModel, labels, predict]);
+
+	const refreshDevices = async () => {
+		try {
+			const list = await navigator.mediaDevices.enumerateDevices();
+			const cams = list.filter((d) => d.kind === "videoinput");
+			setDevices(cams);
+			if (cams.length > 0) setDeviceId(cams[0].deviceId);
+			else setError("No camera found");
+		} catch (e: any) {
+			setError(`Enumerate devices failed. ${e?.message || e}`);
+		}
+	};
+
+	const videoConstraints = deviceId
+		? { deviceId: { exact: deviceId } }
+		: { width: 640, height: 480 };
+
 	return (
-		<div
-			className="flex flex-col items-center justify-center min-h-screen p-8"
-			style={{ backgroundColor: "var(--color-surface)" }}
-		>
-			<div
-				className="max-w-4xl w-full rounded-lg shadow-lg p-8"
-				style={{ backgroundColor: "var(--color-brand-50)" }}
-			>
-				<h1
-					className="text-3xl font-bold text-center mb-8"
-					style={{ color: "var(--color-ink)" }}
-				>
+		<div className="flex flex-col items-center justify-center min-h-screen p-8 bg-gray-50">
+			<div className="max-w-4xl w-full bg-white rounded-lg shadow-lg p-8">
+				<h1 className="text-3xl font-bold text-center mb-8 text-gray-800">
 					Hand Gesture Recognition
 				</h1>
 
-				{isLoading && (
-					<div className="text-center p-8">
-						<div
-							className="inline-block animate-spin rounded-full h-8 w-8 border-b-2"
-							style={{ borderColor: "var(--color-brand-600)" }}
-						></div>
-						<p className="mt-4" style={{ color: "var(--color-charcoal)" }}>
-							Loading Teachable Machine model...
-						</p>
-					</div>
-				)}
-
 				{error && (
-					<div
-						className="p-4 border rounded-lg mb-6"
-						style={{
-							backgroundColor: "var(--color-brand-50)",
-							borderColor: "var(--color-brand-300)",
-						}}
-					>
-						<h3
-							className="font-semibold mb-2"
-							style={{ color: "var(--color-ink)" }}
-						>
-							Error:
-						</h3>
-						<p className="mb-4" style={{ color: "var(--color-charcoal)" }}>
-							{error}
-						</p>
-						<div
-							className="mt-4 p-3 border rounded"
-							style={{
-								backgroundColor: "var(--color-brand-100)",
-								borderColor: "var(--color-brand-400)",
-							}}
-						>
-							<h4
-								className="font-semibold mb-2"
-								style={{ color: "var(--color-ink)" }}
-							>
-								Troubleshooting:
-							</h4>
-							<ul
-								className="text-sm space-y-1"
-								style={{ color: "var(--color-charcoal)" }}
-							>
-								<li>
-									• Ensure model files (model.json, metadata.json, weights.bin)
-									are in /public/model/
-								</li>
-								<li>• Check browser console for detailed error messages</li>
-								<li>
-									• Verify model was exported from Teachable Machine in
-									TensorFlow.js format
-								</li>
-							</ul>
+					<div className="p-4 bg-red-50 border border-red-200 rounded mb-6">
+						<h3 className="font-semibold text-red-800 mb-2">Error</h3>
+						<p className="text-red-700 mb-3">{error}</p>
+						<ul className="text-sm text-red-700 space-y-1">
+							<li>Use https or localhost so the browser can request camera</li>
+							<li>Allow camera for this site in the browser settings</li>
+							<li>Close other apps that may lock the camera</li>
+							<li>On Windows or macOS check system privacy camera settings</li>
+						</ul>
+						<div className="mt-3 flex gap-2">
 							<button
-								onClick={() => window.location.reload()}
-								className="mt-3 px-4 py-2 text-white rounded transition-colors"
-								style={{
-									backgroundColor: "var(--color-brand-600)",
+								onClick={async () => {
+									try {
+										const s = await navigator.mediaDevices.getUserMedia({
+											video: true,
+											audio: false,
+										});
+										setCamReady(true);
+										s.getTracks().forEach((t) => t.stop());
+										await refreshDevices();
+									} catch (e: any) {
+										setError(`Camera request failed. ${e?.message || e}`);
+									}
 								}}
-								onMouseEnter={(e) =>
-									(e.currentTarget.style.backgroundColor =
-										"var(--color-brand-700)")
-								}
-								onMouseLeave={(e) =>
-									(e.currentTarget.style.backgroundColor =
-										"var(--color-brand-600)")
-								}
+								className="px-3 py-2 bg-yellow-600 text-white rounded hover:bg-yellow-700"
 							>
-								Refresh Page
+								Enable camera
+							</button>
+							<button
+								onClick={refreshDevices}
+								className="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+							>
+								Refresh devices
 							</button>
 						</div>
 					</div>
 				)}
 
-				{!isLoading && !error && (
-					<div className="space-y-6">
-						<div className="flex justify-center">
-							<div className="relative">
-								<Webcam
-									ref={webcamRef}
-									style={{ width: 640, height: 480 }}
-									videoConstraints={{
-										width: 640,
-										height: 480,
-										facingMode: "user",
-									}}
-									className="rounded-lg border-2"
-									// style={{ borderColor: 'var(--color-brand-300)' }}
-								/>
-							</div>
-						</div>
-
-						<div className="text-center">
-							<div
-								className="p-6 rounded-lg border"
-								style={{
-									backgroundColor: "var(--color-brand-100)",
-									borderColor: "var(--color-brand-300)",
-								}}
+				<div className="space-y-6">
+					{devices.length > 0 && (
+						<div className="mb-2">
+							<label className="mr-2 font-medium">Camera</label>
+							<select
+								value={deviceId}
+								onChange={(e) => setDeviceId(e.target.value)}
+								className="border rounded px-2 py-1"
 							>
-								<h3
-									className="text-lg font-semibold mb-2"
-									style={{ color: "var(--color-ink)" }}
-								>
+								{devices.map((d) => (
+									<option key={d.deviceId} value={d.deviceId}>
+										{d.label || `Camera ${d.deviceId.slice(0, 6)}`}
+									</option>
+								))}
+							</select>
+						</div>
+					)}
+
+					<div className="flex justify-center">
+						<div className="relative">
+							<Webcam
+								ref={webcamRef}
+								audio={false}
+								style={{ width: 640, height: 480 }}
+								videoConstraints={videoConstraints}
+								className="rounded-lg border-2 border-gray-300"
+								onUserMedia={() => setCamReady(true)}
+								onUserMediaError={(e) => setError(`Camera error. ${String(e)}`)}
+							/>
+						</div>
+					</div>
+
+					{isLoading && (
+						<div className="text-center p-8">
+							<div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+							<p className="mt-4 text-gray-600">
+								Loading Teachable Machine model
+							</p>
+						</div>
+					)}
+
+					{!isLoading && (
+						<div className="text-center">
+							<div className="p-6 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
+								<h3 className="text-lg font-semibold text-gray-800 mb-2">
 									Current Gesture
 								</h3>
 
-								<div
-									className="text-3xl font-bold mb-2"
-									style={{ color: "var(--color-brand-600)" }}
-								>
+								<div className="text-3xl font-bold text-blue-600 mb-2">
 									{currentGesture === "none"
 										? "No Gesture Detected"
 										: currentGesture}
 								</div>
 
 								{gestureMeaning && (
-									<div
-										className="text-xl mb-2"
-										style={{ color: "var(--color-charcoal)" }}
-									>
+									<div className="text-xl text-gray-700 mb-2">
 										Meaning: {gestureMeaning}
 									</div>
 								)}
 
-								<div
-									className="text-sm"
-									style={{ color: "var(--color-charcoal)" }}
-								>
+								<div className="text-sm text-gray-600">
 									Confidence: {(gestureConfidence * 100).toFixed(1)}%
 									{gestureConfidence < CONFIDENCE_THRESHOLD &&
 										gestureConfidence > 0 && (
-											<span
-												className="ml-2"
-												style={{ color: "var(--color-cocoa)" }}
-											>
-												(Below threshold:{" "}
-												{(CONFIDENCE_THRESHOLD * 100).toFixed(0)}%)
+											<span className="text-orange-600 ml-2">
+												Below threshold {Math.round(CONFIDENCE_THRESHOLD * 100)}
+												%
 											</span>
 										)}
 								</div>
 							</div>
 						</div>
+					)}
 
-						{/* Model Information */}
+					{!isLoading && (
 						<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-							{/* Available Gestures */}
-							<div
-								className="p-4 rounded-lg"
-								style={{ backgroundColor: "var(--color-brand-100)" }}
-							>
-								<h4
-									className="font-semibold mb-3"
-									style={{ color: "var(--color-ink)" }}
-								>
-									Available Gestures:
+							<div className="p-4 bg-gray-50 rounded-lg">
+								<h4 className="font-semibold text-gray-800 mb-3">
+									Available Gestures
 								</h4>
 								<div className="space-y-2">
-									{labels.map((label, index) => (
-										<div
-											key={index}
-											className="flex justify-between items-center"
-										>
-											<span
-												className="font-medium"
-												style={{ color: "var(--color-ink)" }}
-											>
-												{label}
-											</span>
-											<span
-												className="text-sm"
-												style={{ color: "var(--color-charcoal)" }}
-											>
-												{MAP[label as keyof typeof MAP] || label}
+									{labels.map((label, i) => (
+										<div key={i} className="flex justify-between items-center">
+											<span className="font-medium">{label}</span>
+											<span className="text-gray-600 text-sm">
+												{MAP[label] || label}
 											</span>
 										</div>
 									))}
 								</div>
 							</div>
 
-							{/* Model Stats */}
-							<div
-								className="p-4 rounded-lg"
-								style={{ backgroundColor: "var(--color-brand-100)" }}
-							>
-								<h4
-									className="font-semibold mb-3"
-									style={{ color: "var(--color-ink)" }}
-								>
-									Model Info:
-								</h4>
-								<div
-									className="space-y-2 text-sm"
-									style={{ color: "var(--color-charcoal)" }}
-								>
+							<div className="p-4 bg-gray-50 rounded-lg">
+								<h4 className="font-semibold text-gray-800 mb-3">Model Info</h4>
+								<div className="space-y-2 text-sm text-gray-700">
 									<div>
 										<strong>Classes:</strong> {labels.length}
 									</div>
@@ -346,45 +293,22 @@ export function HandPOC() {
 									</div>
 									<div>
 										<strong>Confidence Threshold:</strong>{" "}
-										{(CONFIDENCE_THRESHOLD * 100).toFixed(0)}%
-									</div>
-									<div>
-										<strong>Prediction Rate:</strong> ~60 FPS
+										{Math.round(CONFIDENCE_THRESHOLD * 100)}%
 									</div>
 								</div>
 							</div>
 						</div>
+					)}
 
-						{/* Usage Instructions */}
-						<div
-							className="p-4 border rounded-lg"
-							style={{
-								backgroundColor: "var(--color-brand-50)",
-								borderColor: "var(--color-brand-300)",
-							}}
-						>
-							<h4
-								className="font-semibold mb-2"
-								style={{ color: "var(--color-ink)" }}
-							>
-								Usage Instructions:
-							</h4>
-							<ul
-								className="text-sm space-y-1"
-								style={{ color: "var(--color-charcoal)" }}
-							>
-								<li>• Position your hand clearly in front of the camera</li>
-								<li>• Make one of the trained gestures: A, N, YA, or STOP</li>
-								<li>• Hold the gesture steady for better recognition</li>
-								<li>• Ensure good lighting for optimal performance</li>
-								<li>
-									• Predictions below {(CONFIDENCE_THRESHOLD * 100).toFixed(0)}%
-									confidence will show "No Gesture Detected"
-								</li>
-							</ul>
+					{!camReady && (
+						<div className="p-4 bg-yellow-50 border border-yellow-200 rounded">
+							<p className="text-yellow-800">
+								If the site does not prompt, allow camera in the browser
+								settings then reload
+							</p>
 						</div>
-					</div>
-				)}
+					)}
+				</div>
 			</div>
 		</div>
 	);

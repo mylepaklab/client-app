@@ -1,5 +1,1 @@
-{
-	"labels": ["Class 1", "Class 2", "Class 3"],
-	"modelName": "Sample Model",
-	"description": "This is a placeholder metadata file. Replace with your actual Teachable Machine model files."
-}
+{"tfjsVersion":"1.7.4","tmVersion":"2.4.10","packageVersion":"0.8.4-alpha2","packageName":"@teachablemachine/image","timeStamp":"2025-08-15T09:50:11.013Z","userMetadata":{},"modelName":"tm-my-image-model","labels":["A","N","Ya","Stop"],"imageSize":224}

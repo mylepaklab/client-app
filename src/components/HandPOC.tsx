@@ -1,226 +1,86 @@
 import { useRef, useEffect, useState, useCallback } from "react";
 import Webcam from "react-webcam";
-import {
-	HandLandmarker,
-	FilesetResolver,
-	DrawingUtils,
-} from "@mediapipe/tasks-vision";
+import * as tf from "@tensorflow/tfjs";
 
-// Gesture mapping dictionary
-const DICT = {
+const MAP = {
 	A: "Letter A",
 	N: "Letter N",
-	STOP: "Stop",
-	YA: "Ya",
+	Stop: "Stop",
+	Ya: "Ya",
+	none: "",
 };
 
-// Landmark indices
-const FINGERTIPS = [4, 8, 12, 16, 20]; // Thumb, Index, Middle, Ring, Pinky
-const PIPS = [3, 6, 10, 14, 18]; // PIP joints
-const WRIST = 0;
-
-// Configurable threshold for sensitivity
-const THRESHOLD = 0.06;
+const CONFIDENCE_THRESHOLD = 0.8;
 
 export function HandPOC() {
 	const webcamRef = useRef<Webcam>(null);
-	const canvasRef = useRef<HTMLCanvasElement>(null);
-	const [handLandmarker, setHandLandmarker] = useState<HandLandmarker | null>(
-		null
-	);
+	const [model, setModel] = useState<tf.LayersModel | null>(null);
+	const [labels, setLabels] = useState<string[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 	const [currentGesture, setCurrentGesture] = useState<string>("none");
 	const [gestureConfidence, setGestureConfidence] = useState<number>(0);
+	const [gestureMeaning, setGestureMeaning] = useState<string>("");
 	const animationFrameRef = useRef<number>();
 
-	useEffect(() => {
-		const initializeHandLandmarker = async () => {
-			try {
-				const vision = await FilesetResolver.forVisionTasks(
-					"https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision/wasm"
-				);
-
-				const landmarker = await HandLandmarker.createFromOptions(vision, {
-					baseOptions: {
-						modelAssetPath:
-							"https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
-						delegate: "GPU",
-					},
-					runningMode: "VIDEO",
-					numHands: 1,
-				});
-
-				setHandLandmarker(landmarker);
-				setIsLoading(false);
-			} catch (err: any) {
-				setError(`Failed to initialize hand landmarker: ${err.message}`);
-				setIsLoading(false);
-			}
-		};
-
-		initializeHandLandmarker();
-	}, []);
-
-	// Calculate distance between two landmarks
-	const getDistance = (
-		point1: { x: number; y: number },
-		point2: { x: number; y: number }
-	): number => {
-		return Math.sqrt(
-			Math.pow(point1.x - point2.x, 2) + Math.pow(point1.y - point2.y, 2)
-		);
-	};
-
-	// Check if a finger is extended
-	const isFingerExtended = (landmarks: any[], fingerIndex: number): boolean => {
-		if (fingerIndex === 0) {
-			// Thumb (special case)
-			const thumbTip = landmarks[FINGERTIPS[0]];
-			const thumbMcp = landmarks[2]; // Thumb MCP joint
-			const wrist = landmarks[WRIST];
-
-			// For thumb, check if tip is further from wrist than MCP
-			const tipToWrist = getDistance(thumbTip, wrist);
-			const mcpToWrist = getDistance(thumbMcp, wrist);
-			return tipToWrist > mcpToWrist + THRESHOLD;
-		} else {
-			// For other fingers, compare fingertip to PIP joint distance from wrist
-			const fingertip = landmarks[FINGERTIPS[fingerIndex]];
-			const pip = landmarks[PIPS[fingerIndex]];
-			const wrist = landmarks[WRIST];
-
-			const tipToWrist = getDistance(fingertip, wrist);
-			const pipToWrist = getDistance(pip, wrist);
-			const scale = getDistance(landmarks[9], wrist); // Use middle finger MCP as scale reference
-
-			return tipToWrist > pipToWrist + THRESHOLD * scale;
-		}
-	};
-
-	// Classify gesture based on extended fingers
-	const classifyGesture = (
-		landmarks: any[]
-	): { gesture: string; confidence: number } => {
-		const extendedFingers = FINGERTIPS.map((_, index) =>
-			isFingerExtended(landmarks, index)
-		);
-		const openCount = extendedFingers.filter(Boolean).length;
-
-		// Letter A: Closed fist with thumb up
+	const predict = useCallback(async () => {
 		if (
-			openCount === 1 &&
-			extendedFingers[0] &&
-			!extendedFingers.slice(1).some(Boolean)
+			!model ||
+			!webcamRef.current?.video ||
+			webcamRef.current.video.readyState !== 4
 		) {
-			return { gesture: "A", confidence: 0.9 };
-		}
-
-		// Letter N: Index and middle finger extended, forming "N" shape
-		if (
-			openCount === 2 &&
-			extendedFingers[1] &&
-			extendedFingers[2] &&
-			!extendedFingers[0] &&
-			!extendedFingers[3] &&
-			!extendedFingers[4]
-		) {
-			return { gesture: "N", confidence: 0.85 };
-		}
-
-		// STOP: All five fingers extended (open palm)
-		if (openCount === 5 && extendedFingers.every(Boolean)) {
-			return { gesture: "STOP", confidence: 0.95 };
-		}
-
-		// YA: Thumb and pinky extended (hang loose gesture)
-		if (
-			openCount === 2 &&
-			extendedFingers[0] &&
-			extendedFingers[4] &&
-			!extendedFingers[1] &&
-			!extendedFingers[2] &&
-			!extendedFingers[3]
-		) {
-			return { gesture: "YA", confidence: 0.9 };
-		}
-
-		return { gesture: "none", confidence: 0 };
-	};
-
-	// Process video frame
-	const processFrame = useCallback(() => {
-		if (!handLandmarker || !webcamRef.current?.video) {
-			animationFrameRef.current = requestAnimationFrame(processFrame);
-			return;
-		}
-
-		const video = webcamRef.current.video;
-		if (video.readyState !== 4) {
-			animationFrameRef.current = requestAnimationFrame(processFrame);
 			return;
 		}
 
 		try {
-			const results = handLandmarker.detectForVideo(video, performance.now());
+			const video = webcamRef.current.video;
 
-			if (results.landmarks && results.landmarks.length > 0) {
-				const landmarks = results.landmarks[0];
-				const { gesture, confidence } = classifyGesture(landmarks);
+			const img = tf.browser
+				.fromPixels(video)
+				.resizeBilinear([224, 224])
+				.expandDims(0)
+				.toFloat()
+				.div(255.0);
 
-				setCurrentGesture(gesture);
-				setGestureConfidence(confidence);
+			let predictions: tf.Tensor;
+			if (model instanceof tf.GraphModel) {
+				predictions = model.predict(img) as tf.Tensor;
+			} else {
+				predictions = model.predict(img) as tf.Tensor;
+			}
 
-				// Draw landmarks on canvas
-				if (canvasRef.current) {
-					const canvas = canvasRef.current;
-					const ctx = canvas.getContext("2d");
-					if (ctx) {
-						canvas.width = video.videoWidth;
-						canvas.height = video.videoHeight;
+			const predictionData = await predictions.data();
 
-						ctx.clearRect(0, 0, canvas.width, canvas.height);
+			const maxProbability = Math.max(...Array.from(predictionData));
+			const predictedClassIndex =
+				Array.from(predictionData).indexOf(maxProbability);
+			const predictedLabel = labels[predictedClassIndex] || "unknown";
 
-						// Draw hand landmarks
-						const drawingUtils = new DrawingUtils(ctx);
-						drawingUtils.drawLandmarks(landmarks, {
-							radius: (data) =>
-								DrawingUtils.lerp(data.from!.z!, -0.15, 0.1, 5, 1),
-						});
-						drawingUtils.drawConnectors(
-							landmarks,
-							HandLandmarker.HAND_CONNECTIONS
-						);
-					}
-				}
+			if (maxProbability >= CONFIDENCE_THRESHOLD) {
+				setCurrentGesture(predictedLabel);
+				setGestureConfidence(maxProbability);
+				setGestureMeaning(MAP[predictedLabel as keyof typeof MAP] || "");
 			} else {
 				setCurrentGesture("none");
-				setGestureConfidence(0);
-
-				// Clear canvas
-				if (canvasRef.current) {
-					const ctx = canvasRef.current.getContext("2d");
-					if (ctx) {
-						ctx.clearRect(
-							0,
-							0,
-							canvasRef.current.width,
-							canvasRef.current.height
-						);
-					}
-				}
+				setGestureConfidence(maxProbability);
+				setGestureMeaning("");
 			}
-		} catch (err) {
-			console.error("Error processing frame:", err);
+
+			img.dispose();
+			predictions.dispose();
+		} catch (err: any) {
+			console.error("Prediction error:", err);
 		}
+	}, [model, labels]);
 
-		animationFrameRef.current = requestAnimationFrame(processFrame);
-	}, [handLandmarker]);
-
-	// Start processing when hand landmarker is ready
 	useEffect(() => {
-		if (handLandmarker) {
-			animationFrameRef.current = requestAnimationFrame(processFrame);
+		const runPrediction = () => {
+			predict();
+			animationFrameRef.current = requestAnimationFrame(runPrediction);
+		};
+
+		if (model && labels.length > 0) {
+			animationFrameRef.current = requestAnimationFrame(runPrediction);
 		}
 
 		return () => {
@@ -228,38 +88,138 @@ export function HandPOC() {
 				cancelAnimationFrame(animationFrameRef.current);
 			}
 		};
-	}, [handLandmarker, processFrame]);
+	}, [model, labels, predict]);
+
+	useEffect(() => {
+		const loadModel = async () => {
+			try {
+				setIsLoading(true);
+				setError(null);
+
+				await tf.ready();
+				// Optional, pick one you prefer: 'webgl' or 'wasm'
+				// await tf.setBackend('webgl');
+
+				const [loadedModel, metadataResponse] = await Promise.all([
+					tf.loadLayersModel("/model/model.json"),
+					fetch("/model/metadata.json"),
+				]);
+				const metadata = await metadataResponse.json();
+
+				setModel(loadedModel);
+				setLabels(metadata.labels || []);
+				setIsLoading(false);
+
+				console.log("Loaded as LayersModel", {
+					inputs: loadedModel.inputs,
+					outputs: loadedModel.outputs,
+					labels: metadata.labels,
+				});
+			} catch (err: any) {
+				setError(`Failed to load model: ${err.message}`);
+				setIsLoading(false);
+				console.error("Model loading error:", err);
+			}
+		};
+		loadModel();
+	}, []);
 
 	return (
-		<div className="flex flex-col items-center justify-center min-h-screen p-8 bg-gray-50">
-			<div className="max-w-4xl w-full bg-white rounded-lg shadow-lg p-8">
-				<h1 className="text-3xl font-bold text-center mb-8 text-gray-800">
-					Hand Gesture Recognition POC
+		<div
+			className="flex flex-col items-center justify-center min-h-screen p-8"
+			style={{ backgroundColor: "var(--color-surface)" }}
+		>
+			<div
+				className="max-w-4xl w-full rounded-lg shadow-lg p-8"
+				style={{ backgroundColor: "var(--color-brand-50)" }}
+			>
+				<h1
+					className="text-3xl font-bold text-center mb-8"
+					style={{ color: "var(--color-ink)" }}
+				>
+					Hand Gesture Recognition
 				</h1>
 
-				{/* Loading State */}
 				{isLoading && (
 					<div className="text-center p-8">
-						<div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-						<p className="mt-4 text-gray-600">
-							Loading MediaPipe Hand Landmarker...
+						<div
+							className="inline-block animate-spin rounded-full h-8 w-8 border-b-2"
+							style={{ borderColor: "var(--color-brand-600)" }}
+						></div>
+						<p className="mt-4" style={{ color: "var(--color-charcoal)" }}>
+							Loading Teachable Machine model...
 						</p>
 					</div>
 				)}
 
-				{/* Error State */}
 				{error && (
-					<div className="p-4 bg-red-50 border border-red-200 rounded-lg mb-6">
-						<h3 className="font-semibold text-red-800 mb-2">Error:</h3>
-						<p className="text-red-700">{error}</p>
+					<div
+						className="p-4 border rounded-lg mb-6"
+						style={{
+							backgroundColor: "var(--color-brand-50)",
+							borderColor: "var(--color-brand-300)",
+						}}
+					>
+						<h3
+							className="font-semibold mb-2"
+							style={{ color: "var(--color-ink)" }}
+						>
+							Error:
+						</h3>
+						<p className="mb-4" style={{ color: "var(--color-charcoal)" }}>
+							{error}
+						</p>
+						<div
+							className="mt-4 p-3 border rounded"
+							style={{
+								backgroundColor: "var(--color-brand-100)",
+								borderColor: "var(--color-brand-400)",
+							}}
+						>
+							<h4
+								className="font-semibold mb-2"
+								style={{ color: "var(--color-ink)" }}
+							>
+								Troubleshooting:
+							</h4>
+							<ul
+								className="text-sm space-y-1"
+								style={{ color: "var(--color-charcoal)" }}
+							>
+								<li>
+									• Ensure model files (model.json, metadata.json, weights.bin)
+									are in /public/model/
+								</li>
+								<li>• Check browser console for detailed error messages</li>
+								<li>
+									• Verify model was exported from Teachable Machine in
+									TensorFlow.js format
+								</li>
+							</ul>
+							<button
+								onClick={() => window.location.reload()}
+								className="mt-3 px-4 py-2 text-white rounded transition-colors"
+								style={{
+									backgroundColor: "var(--color-brand-600)",
+								}}
+								onMouseEnter={(e) =>
+									(e.currentTarget.style.backgroundColor =
+										"var(--color-brand-700)")
+								}
+								onMouseLeave={(e) =>
+									(e.currentTarget.style.backgroundColor =
+										"var(--color-brand-600)")
+								}
+							>
+								Refresh Page
+							</button>
+						</div>
 					</div>
 				)}
 
-				{/* Main Interface */}
 				{!isLoading && !error && (
 					<div className="space-y-6">
-						{/* Webcam and Canvas Container */}
-						<div className="relative flex justify-center">
+						<div className="flex justify-center">
 							<div className="relative">
 								<Webcam
 									ref={webcamRef}
@@ -269,82 +229,157 @@ export function HandPOC() {
 										height: 480,
 										facingMode: "user",
 									}}
-									className="rounded-lg border-2 border-gray-300"
-								/>
-								<canvas
-									ref={canvasRef}
-									className="absolute top-0 left-0 pointer-events-none"
-									style={{ width: 640, height: 480 }}
+									className="rounded-lg border-2"
+									// style={{ borderColor: 'var(--color-brand-300)' }}
 								/>
 							</div>
 						</div>
 
-						{/* Gesture Display */}
 						<div className="text-center">
-							<div className="p-6 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
-								<h3 className="text-lg font-semibold text-gray-800 mb-2">
+							<div
+								className="p-6 rounded-lg border"
+								style={{
+									backgroundColor: "var(--color-brand-100)",
+									borderColor: "var(--color-brand-300)",
+								}}
+							>
+								<h3
+									className="text-lg font-semibold mb-2"
+									style={{ color: "var(--color-ink)" }}
+								>
 									Current Gesture
 								</h3>
-								<div className="text-3xl font-bold text-blue-600 mb-2">
+
+								<div
+									className="text-3xl font-bold mb-2"
+									style={{ color: "var(--color-brand-600)" }}
+								>
 									{currentGesture === "none"
 										? "No Gesture Detected"
 										: currentGesture}
 								</div>
-								{currentGesture !== "none" && (
-									<div className="text-xl text-gray-700 mb-2">
-										Meaning: {DICT[currentGesture as keyof typeof DICT]}
+
+								{gestureMeaning && (
+									<div
+										className="text-xl mb-2"
+										style={{ color: "var(--color-charcoal)" }}
+									>
+										Meaning: {gestureMeaning}
 									</div>
 								)}
-								<div className="text-sm text-gray-600">
+
+								<div
+									className="text-sm"
+									style={{ color: "var(--color-charcoal)" }}
+								>
 									Confidence: {(gestureConfidence * 100).toFixed(1)}%
+									{gestureConfidence < CONFIDENCE_THRESHOLD &&
+										gestureConfidence > 0 && (
+											<span
+												className="ml-2"
+												style={{ color: "var(--color-cocoa)" }}
+											>
+												(Below threshold:{" "}
+												{(CONFIDENCE_THRESHOLD * 100).toFixed(0)}%)
+											</span>
+										)}
 								</div>
 							</div>
 						</div>
 
-						{/* Gesture Guide */}
-						<div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-							<div className="text-center p-4 bg-gray-50 rounded-lg">
-								<div className="text-lg font-semibold text-gray-800">A</div>
-								<div className="text-sm text-gray-600">Letter A</div>
-								<div className="text-xs text-gray-500 mt-1">
-									Thumb up, fist closed
+						{/* Model Information */}
+						<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+							{/* Available Gestures */}
+							<div
+								className="p-4 rounded-lg"
+								style={{ backgroundColor: "var(--color-brand-100)" }}
+							>
+								<h4
+									className="font-semibold mb-3"
+									style={{ color: "var(--color-ink)" }}
+								>
+									Available Gestures:
+								</h4>
+								<div className="space-y-2">
+									{labels.map((label, index) => (
+										<div
+											key={index}
+											className="flex justify-between items-center"
+										>
+											<span
+												className="font-medium"
+												style={{ color: "var(--color-ink)" }}
+											>
+												{label}
+											</span>
+											<span
+												className="text-sm"
+												style={{ color: "var(--color-charcoal)" }}
+											>
+												{MAP[label as keyof typeof MAP] || label}
+											</span>
+										</div>
+									))}
 								</div>
 							</div>
-							<div className="text-center p-4 bg-gray-50 rounded-lg">
-								<div className="text-lg font-semibold text-gray-800">N</div>
-								<div className="text-sm text-gray-600">Letter N</div>
-								<div className="text-xs text-gray-500 mt-1">
-									Index + Middle finger
-								</div>
-							</div>
-							<div className="text-center p-4 bg-gray-50 rounded-lg">
-								<div className="text-lg font-semibold text-gray-800">STOP</div>
-								<div className="text-sm text-gray-600">Stop</div>
-								<div className="text-xs text-gray-500 mt-1">
-									Open palm (all fingers)
-								</div>
-							</div>
-							<div className="text-center p-4 bg-gray-50 rounded-lg">
-								<div className="text-lg font-semibold text-gray-800">YA</div>
-								<div className="text-sm text-gray-600">Ya</div>
-								<div className="text-xs text-gray-500 mt-1">
-									Thumb + Pinky (hang loose)
+
+							{/* Model Stats */}
+							<div
+								className="p-4 rounded-lg"
+								style={{ backgroundColor: "var(--color-brand-100)" }}
+							>
+								<h4
+									className="font-semibold mb-3"
+									style={{ color: "var(--color-ink)" }}
+								>
+									Model Info:
+								</h4>
+								<div
+									className="space-y-2 text-sm"
+									style={{ color: "var(--color-charcoal)" }}
+								>
+									<div>
+										<strong>Classes:</strong> {labels.length}
+									</div>
+									<div>
+										<strong>Input Size:</strong> 224x224
+									</div>
+									<div>
+										<strong>Confidence Threshold:</strong>{" "}
+										{(CONFIDENCE_THRESHOLD * 100).toFixed(0)}%
+									</div>
+									<div>
+										<strong>Prediction Rate:</strong> ~60 FPS
+									</div>
 								</div>
 							</div>
 						</div>
 
-						{/* Testing Instructions */}
-						<div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-							<h4 className="font-semibold text-yellow-800 mb-2">
-								Quick Testing Instructions:
+						{/* Usage Instructions */}
+						<div
+							className="p-4 border rounded-lg"
+							style={{
+								backgroundColor: "var(--color-brand-50)",
+								borderColor: "var(--color-brand-300)",
+							}}
+						>
+							<h4
+								className="font-semibold mb-2"
+								style={{ color: "var(--color-ink)" }}
+							>
+								Usage Instructions:
 							</h4>
-							<ul className="text-yellow-700 text-sm space-y-1">
-								<li>• Show each pose to the camera clearly</li>
-								<li>• Hold the gesture steady for best detection</li>
-								<li>• Ensure good lighting and camera visibility</li>
+							<ul
+								className="text-sm space-y-1"
+								style={{ color: "var(--color-charcoal)" }}
+							>
+								<li>• Position your hand clearly in front of the camera</li>
+								<li>• Make one of the trained gestures: A, N, YA, or STOP</li>
+								<li>• Hold the gesture steady for better recognition</li>
+								<li>• Ensure good lighting for optimal performance</li>
 								<li>
-									• Adjust threshold constant (currently {THRESHOLD}) if
-									detection is too sensitive
+									• Predictions below {(CONFIDENCE_THRESHOLD * 100).toFixed(0)}%
+									confidence will show "No Gesture Detected"
 								</li>
 							</ul>
 						</div>

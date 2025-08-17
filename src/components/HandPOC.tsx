@@ -1,11 +1,16 @@
-import { useRef, useEffect, useState } from "react";
+import { useRef, useEffect, useState, useCallback } from "react";
 import * as tf from "@tensorflow/tfjs";
+import "@tensorflow/tfjs-backend-webgl";
+import "@tensorflow/tfjs-layers";
+
 import Webcam from "react-webcam";
 
 const MODEL_URL = "/model/model.json";
 const METADATA_URL = "/model/metadata.json";
 const INPUT_SIZE = 224;
 const CONFIDENCE_THRESHOLD = 0.6;
+
+type Pred = { className: string; probability: number } | null;
 
 export function HandPOC() {
 	const webcamRef = useRef<Webcam>(null);
@@ -15,65 +20,14 @@ export function HandPOC() {
 		null
 	);
 	const [labels, setLabels] = useState<string[]>([]);
-	const [prediction, setPrediction] = useState<{
-		className: string;
-		probability: number;
-	} | null>(null);
+	const [prediction, setPrediction] = useState<Pred>(null);
 	const [error, setError] = useState<string | null>(null);
 	const [translationResult, setTranslationResult] = useState<any>(null);
 	const [isTranslating, setIsTranslating] = useState<boolean>(false);
 	const [detectedText, setDetectedText] = useState<string>("");
 
-	useEffect(() => {
-		let cancelled = false;
-
-		const load = async () => {
-			try {
-				await tf.ready();
-				let loaded: tf.GraphModel | tf.LayersModel;
-
-				try {
-					loaded = await tf.loadGraphModel(MODEL_URL);
-				} catch {
-					loaded = await tf.loadLayersModel(MODEL_URL);
-				}
-
-				const meta = await fetch(METADATA_URL).then((r) => r.json());
-				const lbls: string[] = meta.labels || [];
-				if (!cancelled) {
-					setModel(loaded);
-					setLabels(lbls);
-
-					tf.tidy(() => {
-						const warm = tf.zeros([1, INPUT_SIZE, INPUT_SIZE, 3]);
-						const out = (loaded as any).predict(warm);
-						if (Array.isArray(out)) out.forEach((t) => t.dispose());
-						else out.dispose();
-					});
-
-					loop();
-				}
-			} catch (e: any) {
-				if (!cancelled) setError(e?.message || "Failed to load model");
-			}
-		};
-
-		load();
-
-		const loop = () => {
-			rafRef.current = requestAnimationFrame(loop);
-			predictFrame();
-		};
-
-		return () => {
-			cancelled = true;
-			if (rafRef.current) cancelAnimationFrame(rafRef.current);
-		};
-	}, []);
-
-	const translateText = async (text: string) => {
+	const translateText = useCallback(async (text: string) => {
 		if (!text.trim()) return;
-
 		setIsTranslating(true);
 		try {
 			const response = await fetch(
@@ -83,21 +37,22 @@ export function HandPOC() {
 			);
 			const result = await response.json();
 			setTranslationResult(result);
-		} catch (error) {
-			console.error("Translation failed:", error);
+		} catch (e) {
+			console.error("Translation failed:", e);
 			setError("Translation failed. Please try again.");
 		} finally {
 			setIsTranslating(false);
 		}
-	};
+	}, []);
 
-	const predictFrame = async () => {
+	const predictFrame = useCallback(() => {
 		const cam = webcamRef.current;
 		if (!cam?.video || !model) return;
-		const video = cam.video as HTMLVideoElement;
-		if (video.readyState !== 4) return;
 
-		const res = tf.tidy(() => {
+		const video = cam.video as HTMLVideoElement;
+		if (!video || video.readyState !== 4) return;
+
+		const probs = tf.tidy(() => {
 			const img = tf.browser
 				.fromPixels(video)
 				.resizeBilinear([INPUT_SIZE, INPUT_SIZE])
@@ -105,15 +60,17 @@ export function HandPOC() {
 				.div(255)
 				.expandDims(0);
 
-			const logits = (model as any).predict(img) as tf.Tensor;
-			const probs = tf.softmax(logits);
-			return probs.dataSync();
+			// Works for both LayersModel and GraphModel when the output is logits or probabilities
+			const out = (model as any).predict(img) as tf.Tensor;
+			const post = tf.softmax(out);
+			return post.dataSync();
 		});
 
 		let maxIdx = 0;
-		for (let i = 1; i < res.length; i++) if (res[i] > res[maxIdx]) maxIdx = i;
+		for (let i = 1; i < probs.length; i++)
+			if (probs[i] > probs[maxIdx]) maxIdx = i;
 
-		const prob = res[maxIdx];
+		const prob = probs[maxIdx] ?? 0;
 		const className = labels[maxIdx] || "Unknown";
 
 		if (className.toLowerCase() === "stop" && prob >= CONFIDENCE_THRESHOLD) {
@@ -136,7 +93,64 @@ export function HandPOC() {
 				? { className, probability: prob }
 				: { className: "Uncertain", probability: prob }
 		);
-	};
+	}, [model, labels, detectedText, translateText]);
+
+	useEffect(() => {
+		let cancelled = false;
+
+		const loop = () => {
+			if (cancelled) return;
+			rafRef.current = requestAnimationFrame(loop);
+			predictFrame();
+		};
+
+		const load = async () => {
+			try {
+				await tf.setBackend("webgl").catch(() => tf.setBackend("cpu"));
+				await tf.ready();
+
+				// keep a reference so layers stay included in bundles
+				const keep = tf.layers.zeroPadding2d;
+				void keep;
+
+				let loaded: tf.GraphModel | tf.LayersModel;
+
+				try {
+					// Teachable Machine image projects are usually Layers models
+					loaded = await tf.loadLayersModel(MODEL_URL);
+				} catch {
+					// Fallback in case the export is a Graph model
+					loaded = await tf.loadGraphModel(MODEL_URL);
+				}
+
+				const meta = await fetch(METADATA_URL).then((r) => r.json());
+				const lbls: string[] = meta.labels || [];
+
+				if (!cancelled) {
+					setModel(loaded);
+					setLabels(lbls);
+
+					tf.tidy(() => {
+						const warm = tf.zeros([1, INPUT_SIZE, INPUT_SIZE, 3]);
+						const out = (loaded as any).predict?.(warm);
+						if (Array.isArray(out)) out.forEach((t) => t?.dispose?.());
+						else out?.dispose?.();
+					});
+
+					loop();
+				}
+			} catch (e: any) {
+				if (!cancelled) setError(e?.message || "Failed to load model");
+			}
+		};
+
+		load();
+
+		return () => {
+			cancelled = true;
+			if (rafRef.current) cancelAnimationFrame(rafRef.current);
+		};
+	}, [predictFrame]);
 
 	return (
 		<div className="min-h-screen bg-gradient-to-br from-surface via-brand-50 to-brand-100 p-6">
@@ -146,7 +160,7 @@ export function HandPOC() {
 						AI Hand Gesture Recognition
 					</h1>
 					<p className="text-lg text-cocoa/80">
-						Real-time machine learning powered gesture detection
+						Real time machine learning powered gesture detection
 					</p>
 				</div>
 
@@ -275,7 +289,7 @@ export function HandPOC() {
 									</h3>
 									<p className="text-blue-700">{detectedText}</p>
 									<p className="text-xs text-blue-600 mt-2">
-										Show "STOP" gesture to translate
+										Show STOP gesture to translate
 									</p>
 								</div>
 							)}
@@ -315,37 +329,33 @@ export function HandPOC() {
 									</div>
 
 									<div className="space-y-3">
-										{translationResult.translated && (
-											<div className="space-y-3">
-												{translationResult.translated
-													.split("\n")
-													.map((line: string, index: number) => {
-														if (!line.trim()) return null;
-
-														const match = line.match(/\*\*([^*]+):\*\*\s*(.+)/);
-														if (match) {
-															const [, language, translation] = match;
-															return (
-																<div
-																	key={index}
-																	className="p-3 bg-white rounded-lg border border-green-200"
-																>
-																	<div className="flex items-center gap-2 mb-2">
-																		<div className="w-2 h-2 bg-green-500 rounded-full"></div>
-																		<p className="text-sm font-medium text-green-800">
-																			{language}:
-																		</p>
-																	</div>
-																	<p className="text-green-700 text-lg">
-																		{translation}
+										{translationResult.translated &&
+											translationResult.translated
+												.split("\n")
+												.map((line: string, index: number) => {
+													if (!line.trim()) return null;
+													const match = line.match(/\*\*([^*]+):\*\*\s*(.+)/);
+													if (match) {
+														const [, language, translation] = match;
+														return (
+															<div
+																key={index}
+																className="p-3 bg-white rounded-lg border border-green-200"
+															>
+																<div className="flex items-center gap-2 mb-2">
+																	<div className="w-2 h-2 bg-green-500 rounded-full"></div>
+																	<p className="text-sm font-medium text-green-800">
+																		{language}:
 																	</p>
 																</div>
-															);
-														}
-														return null;
-													})}
-											</div>
-										)}
+																<p className="text-green-700 text-lg">
+																	{translation}
+																</p>
+															</div>
+														);
+													}
+													return null;
+												})}
 									</div>
 
 									{translationResult.model && (
@@ -363,7 +373,7 @@ export function HandPOC() {
 
 				<div className="mt-8 text-center">
 					<p className="text-cocoa/60 text-sm">
-						Powered by TensorFlow.js • Real-time inference in your browser
+						Powered by TensorFlow.js • Real time inference in your browser
 					</p>
 				</div>
 			</div>

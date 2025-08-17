@@ -96,11 +96,6 @@ export function Footer() {
 						<p className="text-gray-400 mb-4 md:mb-0">
 							&copy; 2025 MyLepakLab. All rights reserved.
 						</p>
-						<div className="flex items-center space-x-2 text-gray-400">
-							<span>Made with</span>
-							<span className="text-red-400">❤️</span>
-							<span>for the PAN-SEA AI DEVELOPER CHALLENGE 2025 </span>
-						</div>
 					</div>
 				</div>
 			</div>

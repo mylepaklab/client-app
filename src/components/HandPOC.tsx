@@ -1,313 +1,370 @@
-import { useRef, useEffect, useState, useCallback } from "react";
+import { useRef, useEffect, useState } from "react";
+import * as tf from "@tensorflow/tfjs";
 import Webcam from "react-webcam";
-import * as tmImage from "@teachablemachine/image";
 
-type TmModel = {
-	predict: (
-		img: HTMLVideoElement | HTMLImageElement | HTMLCanvasElement,
-		flipHorizontal?: boolean
-	) => Promise<Array<{ className: string; probability: number }>>;
-};
-
-const MAP: Record<string, string> = {
-	A: "Letter A",
-	N: "Letter N",
-	Stop: "Stop",
-	Ya: "Ya",
-	none: "",
-};
-
-const MODEL_BASE = "/model/";
-const CONFIDENCE_THRESHOLD = 0.8;
+const MODEL_URL = "/model/model.json";
+const METADATA_URL = "/model/metadata.json";
+const INPUT_SIZE = 224;
+const CONFIDENCE_THRESHOLD = 0.6;
 
 export function HandPOC() {
 	const webcamRef = useRef<Webcam>(null);
+	const rafRef = useRef<number | null>(null);
 
-	const [tmModel, setTmModel] = useState<TmModel | null>(null);
+	const [model, setModel] = useState<tf.GraphModel | tf.LayersModel | null>(
+		null
+	);
 	const [labels, setLabels] = useState<string[]>([]);
-
-	const [isLoading, setIsLoading] = useState(true);
+	const [prediction, setPrediction] = useState<{
+		className: string;
+		probability: number;
+	} | null>(null);
 	const [error, setError] = useState<string | null>(null);
+	const [translationResult, setTranslationResult] = useState<any>(null);
+	const [isTranslating, setIsTranslating] = useState<boolean>(false);
+	const [detectedText, setDetectedText] = useState<string>("");
 
-	const [camReady, setCamReady] = useState(false);
-	const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
-	const [deviceId, setDeviceId] = useState<string | undefined>(undefined);
-
-	const [currentGesture, setCurrentGesture] = useState("none");
-	const [gestureConfidence, setGestureConfidence] = useState(0);
-	const [gestureMeaning, setGestureMeaning] = useState("");
-	const rafRef = useRef<number>();
-
-	// Ask for camera permission, enumerate devices
 	useEffect(() => {
-		const ask = async () => {
-			try {
-				const stream = await navigator.mediaDevices.getUserMedia({
-					video: true,
-					audio: false,
-				});
-				setCamReady(true);
-				const list = await navigator.mediaDevices.enumerateDevices();
-				const cams = list.filter((d) => d.kind === "videoinput");
-				setDevices(cams);
-				if (cams.length > 0) setDeviceId((prev) => prev || cams[0].deviceId);
-				stream.getTracks().forEach((t) => t.stop());
-			} catch (e: any) {
-				setError(
-					`Camera access failed. ${e?.name || ""} ${e?.message || ""}`.trim()
-				);
-			}
-		};
-		ask();
-	}, []);
+		let cancelled = false;
 
-	// Load TM model and metadata
-	useEffect(() => {
 		const load = async () => {
 			try {
-				setIsLoading(true);
-				setError(null);
+				await tf.ready();
+				let loaded: tf.GraphModel | tf.LayersModel;
 
-				const [model, metaRes] = await Promise.all([
-					tmImage.load(MODEL_BASE + "model.json", MODEL_BASE + "metadata.json"),
-					fetch(MODEL_BASE + "metadata.json"),
-				]);
+				try {
+					loaded = await tf.loadGraphModel(MODEL_URL);
+				} catch {
+					loaded = await tf.loadLayersModel(MODEL_URL);
+				}
 
-				if (!metaRes.ok) throw new Error("metadata.json not found");
-				const meta = await metaRes.json();
+				const meta = await fetch(METADATA_URL).then((r) => r.json());
+				const lbls: string[] = meta.labels || [];
+				if (!cancelled) {
+					setModel(loaded);
+					setLabels(lbls);
 
-				setTmModel(model as unknown as TmModel);
-				setLabels(meta.labels || []);
+					tf.tidy(() => {
+						const warm = tf.zeros([1, INPUT_SIZE, INPUT_SIZE, 3]);
+						const out = (loaded as any).predict(warm);
+						if (Array.isArray(out)) out.forEach((t) => t.dispose());
+						else out.dispose();
+					});
+
+					loop();
+				}
 			} catch (e: any) {
-				setError(`Failed to load model. ${e?.message || e}`);
-			} finally {
-				setIsLoading(false);
+				if (!cancelled) setError(e?.message || "Failed to load model");
 			}
 		};
+
 		load();
-	}, []);
 
-	// Predict per frame
-	const predict = useCallback(async () => {
-		if (!tmModel) return;
-		const video = webcamRef.current?.video as HTMLVideoElement | undefined;
-		if (!video || video.readyState !== 4) return;
-
-		try {
-			// Second argument flips input horizontally for selfie view
-			const preds = await tmModel.predict(video, true);
-			// Pick top prediction
-			let top = preds[0];
-			for (const p of preds) if (p.probability > top.probability) top = p;
-
-			if (top.probability >= CONFIDENCE_THRESHOLD) {
-				setCurrentGesture(top.className);
-				setGestureMeaning(MAP[top.className] || "");
-			} else {
-				setCurrentGesture("none");
-				setGestureMeaning("");
-			}
-			setGestureConfidence(top.probability);
-		} catch (e) {
-			// Keep UI alive
-			console.error("Prediction error", e);
-		}
-	}, [tmModel]);
-
-	// Start loop when ready
-	useEffect(() => {
 		const loop = () => {
-			predict();
 			rafRef.current = requestAnimationFrame(loop);
+			predictFrame();
 		};
-		if (camReady && tmModel && labels.length > 0) {
-			rafRef.current = requestAnimationFrame(loop);
-		}
+
 		return () => {
+			cancelled = true;
 			if (rafRef.current) cancelAnimationFrame(rafRef.current);
 		};
-	}, [camReady, tmModel, labels, predict]);
+	}, []);
 
-	const refreshDevices = async () => {
+	const translateText = async (text: string) => {
+		if (!text.trim()) return;
+
+		setIsTranslating(true);
 		try {
-			const list = await navigator.mediaDevices.enumerateDevices();
-			const cams = list.filter((d) => d.kind === "videoinput");
-			setDevices(cams);
-			if (cams.length > 0) setDeviceId(cams[0].deviceId);
-			else setError("No camera found");
-		} catch (e: any) {
-			setError(`Enumerate devices failed. ${e?.message || e}`);
+			const response = await fetch(
+				`https://backend-api-fm4g.onrender.com/translate_string?text_to_translate=${encodeURIComponent(
+					text
+				)}`
+			);
+			const result = await response.json();
+			setTranslationResult(result);
+		} catch (error) {
+			console.error("Translation failed:", error);
+			setError("Translation failed. Please try again.");
+		} finally {
+			setIsTranslating(false);
 		}
 	};
 
-	const videoConstraints = deviceId
-		? { deviceId: { exact: deviceId } }
-		: { width: 640, height: 480 };
+	const predictFrame = async () => {
+		const cam = webcamRef.current;
+		if (!cam?.video || !model) return;
+		const video = cam.video as HTMLVideoElement;
+		if (video.readyState !== 4) return;
+
+		const res = tf.tidy(() => {
+			const img = tf.browser
+				.fromPixels(video)
+				.resizeBilinear([INPUT_SIZE, INPUT_SIZE])
+				.toFloat()
+				.div(255)
+				.expandDims(0);
+
+			const logits = (model as any).predict(img) as tf.Tensor;
+			const probs = tf.softmax(logits);
+			return probs.dataSync();
+		});
+
+		let maxIdx = 0;
+		for (let i = 1; i < res.length; i++) if (res[i] > res[maxIdx]) maxIdx = i;
+
+		const prob = res[maxIdx];
+		const className = labels[maxIdx] || "Unknown";
+
+		if (className.toLowerCase() === "stop" && prob >= CONFIDENCE_THRESHOLD) {
+			if (detectedText.trim()) {
+				translateText(detectedText);
+				setDetectedText("");
+			}
+		} else if (
+			className !== "Uncertain" &&
+			className !== "Unknown" &&
+			prob >= CONFIDENCE_THRESHOLD
+		) {
+			if (className.toLowerCase() !== "stop") {
+				setDetectedText((prev) => (prev ? `${prev} ${className}` : className));
+			}
+		}
+
+		setPrediction(
+			prob >= CONFIDENCE_THRESHOLD
+				? { className, probability: prob }
+				: { className: "Uncertain", probability: prob }
+		);
+	};
 
 	return (
-		<div className="flex flex-col items-center justify-center min-h-screen p-8 bg-gray-50">
-			<div className="max-w-4xl w-full bg-white rounded-lg shadow-lg p-8">
-				<h1 className="text-3xl font-bold text-center mb-8 text-gray-800">
-					Hand Gesture Recognition
-				</h1>
+		<div className="min-h-screen bg-gradient-to-br from-surface via-brand-50 to-brand-100 p-6">
+			<div className="max-w-4xl mx-auto">
+				<div className="text-center mb-8">
+					<h1 className="text-4xl font-bold text-charcoal mb-2">
+						AI Hand Gesture Recognition
+					</h1>
+					<p className="text-lg text-cocoa/80">
+						Real-time machine learning powered gesture detection
+					</p>
+				</div>
 
-				{error && (
-					<div className="p-4 bg-red-50 border border-red-200 rounded mb-6">
-						<h3 className="font-semibold text-red-800 mb-2">Error</h3>
-						<p className="text-red-700 mb-3">{error}</p>
-						<ul className="text-sm text-red-700 space-y-1">
-							<li>Use https or localhost so the browser can request camera</li>
-							<li>Allow camera for this site in the browser settings</li>
-							<li>Close other apps that may lock the camera</li>
-							<li>On Windows or macOS check system privacy camera settings</li>
-						</ul>
-						<div className="mt-3 flex gap-2">
-							<button
-								onClick={async () => {
-									try {
-										const s = await navigator.mediaDevices.getUserMedia({
-											video: true,
-											audio: false,
-										});
-										setCamReady(true);
-										s.getTracks().forEach((t) => t.stop());
-										await refreshDevices();
-									} catch (e: any) {
-										setError(`Camera request failed. ${e?.message || e}`);
-									}
-								}}
-								className="px-3 py-2 bg-yellow-600 text-white rounded hover:bg-yellow-700"
-							>
-								Enable camera
-							</button>
-							<button
-								onClick={refreshDevices}
-								className="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-							>
-								Refresh devices
-							</button>
-						</div>
-					</div>
-				)}
+				<div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-2xl p-8 border border-brand-200/50">
+					<div className="grid md:grid-cols-2 gap-8 items-start">
+						<div className="space-y-4">
+							<h2 className="text-2xl font-semibold text-charcoal mb-4 flex items-center gap-2">
+								<div className="w-3 h-3 bg-brand-500 rounded-full animate-pulse"></div>
+								Live Camera Feed
+							</h2>
 
-				<div className="space-y-6">
-					{devices.length > 0 && (
-						<div className="mb-2">
-							<label className="mr-2 font-medium">Camera</label>
-							<select
-								value={deviceId}
-								onChange={(e) => setDeviceId(e.target.value)}
-								className="border rounded px-2 py-1"
-							>
-								{devices.map((d) => (
-									<option key={d.deviceId} value={d.deviceId}>
-										{d.label || `Camera ${d.deviceId.slice(0, 6)}`}
-									</option>
-								))}
-							</select>
-						</div>
-					)}
-
-					<div className="flex justify-center">
-						<div className="relative">
-							<Webcam
-								ref={webcamRef}
-								audio={false}
-								style={{ width: 640, height: 480 }}
-								videoConstraints={videoConstraints}
-								className="rounded-lg border-2 border-gray-300"
-								onUserMedia={() => setCamReady(true)}
-								onUserMediaError={(e) => setError(`Camera error. ${String(e)}`)}
-							/>
-						</div>
-					</div>
-
-					{isLoading && (
-						<div className="text-center p-8">
-							<div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-							<p className="mt-4 text-gray-600">
-								Loading Teachable Machine model
-							</p>
-						</div>
-					)}
-
-					{!isLoading && (
-						<div className="text-center">
-							<div className="p-6 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
-								<h3 className="text-lg font-semibold text-gray-800 mb-2">
-									Current Gesture
-								</h3>
-
-								<div className="text-3xl font-bold text-blue-600 mb-2">
-									{currentGesture === "none"
-										? "No Gesture Detected"
-										: currentGesture}
-								</div>
-
-								{gestureMeaning && (
-									<div className="text-xl text-gray-700 mb-2">
-										Meaning: {gestureMeaning}
-									</div>
-								)}
-
-								<div className="text-sm text-gray-600">
-									Confidence: {(gestureConfidence * 100).toFixed(1)}%
-									{gestureConfidence < CONFIDENCE_THRESHOLD &&
-										gestureConfidence > 0 && (
-											<span className="text-orange-600 ml-2">
-												Below threshold {Math.round(CONFIDENCE_THRESHOLD * 100)}
-												%
-											</span>
-										)}
+							<div className="relative">
+								<div className="absolute inset-0 bg-gradient-to-r from-brand-400 to-brand-600 rounded-2xl blur-lg opacity-20"></div>
+								<div className="relative bg-white rounded-2xl p-4 shadow-lg border-2 border-brand-200">
+									<Webcam
+										ref={webcamRef}
+										audio={false}
+										screenshotFormat="image/jpeg"
+										videoConstraints={{ facingMode: "user" }}
+										className="w-full h-64 md:h-80 object-cover rounded-xl"
+									/>
 								</div>
 							</div>
 						</div>
-					)}
 
-					{!isLoading && (
-						<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-							<div className="p-4 bg-gray-50 rounded-lg">
-								<h4 className="font-semibold text-gray-800 mb-3">
-									Available Gestures
-								</h4>
-								<div className="space-y-2">
-									{labels.map((label, i) => (
-										<div key={i} className="flex justify-between items-center">
-											<span className="font-medium">{label}</span>
-											<span className="text-gray-600 text-sm">
-												{MAP[label] || label}
+						<div className="space-y-6">
+							<h2 className="text-2xl font-semibold text-charcoal mb-4 flex items-center gap-2">
+								<div className="w-3 h-3 bg-green-500 rounded-full"></div>
+								AI Prediction
+							</h2>
+
+							{error && (
+								<div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-lg">
+									<div className="flex items-center">
+										<div className="flex-shrink-0">
+											<svg
+												className="h-5 w-5 text-red-400"
+												viewBox="0 0 20 20"
+												fill="currentColor"
+											>
+												<path
+													fillRule="evenodd"
+													d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+													clipRule="evenodd"
+												/>
+											</svg>
+										</div>
+										<div className="ml-3">
+											<p className="text-red-700 font-medium">{error}</p>
+										</div>
+									</div>
+								</div>
+							)}
+
+							{!prediction && !error && (
+								<div className="bg-brand-50 border border-brand-200 rounded-xl p-6">
+									<div className="flex items-center justify-center space-x-2">
+										<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-500"></div>
+										<p className="text-brand-700 font-medium">
+											Initializing AI model...
+										</p>
+									</div>
+								</div>
+							)}
+
+							{prediction && (
+								<div className="space-y-4">
+									<div className="bg-gradient-to-r from-brand-500 to-brand-600 rounded-xl p-6 text-white">
+										<div className="text-center">
+											<h3 className="text-lg font-medium mb-2">
+												Detected Gesture
+											</h3>
+											<div className="text-3xl font-bold mb-2">
+												{prediction.className}
+											</div>
+											<div className="text-brand-100">
+												Confidence: {(prediction.probability * 100).toFixed(1)}%
+											</div>
+										</div>
+									</div>
+
+									<div className="bg-white rounded-lg p-4 border border-brand-200">
+										<div className="flex justify-between items-center mb-2">
+											<span className="text-sm font-medium text-charcoal">
+												Confidence Level
+											</span>
+											<span className="text-sm text-cocoa">
+												{(prediction.probability * 100).toFixed(1)}%
 											</span>
 										</div>
-									))}
-								</div>
-							</div>
+										<div className="w-full bg-brand-100 rounded-full h-3">
+											<div
+												className="bg-gradient-to-r from-brand-500 to-brand-600 h-3 rounded-full transition-all duration-300 ease-out"
+												style={{ width: `${prediction.probability * 100}%` }}
+											></div>
+										</div>
+									</div>
 
-							<div className="p-4 bg-gray-50 rounded-lg">
-								<h4 className="font-semibold text-gray-800 mb-3">Model Info</h4>
-								<div className="space-y-2 text-sm text-gray-700">
-									<div>
-										<strong>Classes:</strong> {labels.length}
-									</div>
-									<div>
-										<strong>Input Size:</strong> 224x224
-									</div>
-									<div>
-										<strong>Confidence Threshold:</strong>{" "}
-										{Math.round(CONFIDENCE_THRESHOLD * 100)}%
+									<div
+										className={`flex items-center gap-2 p-3 rounded-lg ${
+											prediction.probability >= CONFIDENCE_THRESHOLD
+												? "bg-green-50 text-green-700 border border-green-200"
+												: "bg-yellow-50 text-yellow-700 border border-yellow-200"
+										}`}
+									>
+										<div
+											className={`w-2 h-2 rounded-full ${
+												prediction.probability >= CONFIDENCE_THRESHOLD
+													? "bg-green-500"
+													: "bg-yellow-500"
+											}`}
+										></div>
+										<span className="text-sm font-medium">
+											{prediction.probability >= CONFIDENCE_THRESHOLD
+												? "High Confidence"
+												: "Low Confidence"}
+										</span>
 									</div>
 								</div>
-							</div>
-						</div>
-					)}
+							)}
 
-					{!camReady && (
-						<div className="p-4 bg-yellow-50 border border-yellow-200 rounded">
-							<p className="text-yellow-800">
-								If the site does not prompt, allow camera in the browser
-								settings then reload
-							</p>
+							{detectedText && (
+								<div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+									<h3 className="text-sm font-medium text-blue-800 mb-2">
+										Accumulated Text
+									</h3>
+									<p className="text-blue-700">{detectedText}</p>
+									<p className="text-xs text-blue-600 mt-2">
+										Show "STOP" gesture to translate
+									</p>
+								</div>
+							)}
+
+							{isTranslating && (
+								<div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
+									<div className="flex items-center space-x-2">
+										<div className="animate-spin rounded-full h-4 w-4 border-b-2 border-yellow-600"></div>
+										<p className="text-yellow-700 font-medium">
+											Translating...
+										</p>
+									</div>
+								</div>
+							)}
+
+							{translationResult && (
+								<div className="bg-green-50 border border-green-200 rounded-xl p-6">
+									<div className="flex justify-between items-start mb-4">
+										<h3 className="text-lg font-semibold text-green-800">
+											Translation Results
+										</h3>
+										<button
+											onClick={() => setTranslationResult(null)}
+											className="text-xs text-green-600 hover:text-green-800 underline"
+										>
+											Clear
+										</button>
+									</div>
+
+									<div className="mb-4 p-3 bg-white rounded-lg border border-green-200">
+										<p className="text-sm font-medium text-green-800 mb-1">
+											Original:
+										</p>
+										<p className="text-green-700">
+											{translationResult.original}
+										</p>
+									</div>
+
+									<div className="space-y-3">
+										{translationResult.translated && (
+											<div className="space-y-3">
+												{translationResult.translated
+													.split("\n")
+													.map((line: string, index: number) => {
+														if (!line.trim()) return null;
+
+														const match = line.match(/\*\*([^*]+):\*\*\s*(.+)/);
+														if (match) {
+															const [, language, translation] = match;
+															return (
+																<div
+																	key={index}
+																	className="p-3 bg-white rounded-lg border border-green-200"
+																>
+																	<div className="flex items-center gap-2 mb-2">
+																		<div className="w-2 h-2 bg-green-500 rounded-full"></div>
+																		<p className="text-sm font-medium text-green-800">
+																			{language}:
+																		</p>
+																	</div>
+																	<p className="text-green-700 text-lg">
+																		{translation}
+																	</p>
+																</div>
+															);
+														}
+														return null;
+													})}
+											</div>
+										)}
+									</div>
+
+									{translationResult.model && (
+										<div className="mt-4 pt-3 border-t border-green-200">
+											<p className="text-xs text-green-600">
+												Powered by {translationResult.model}
+											</p>
+										</div>
+									)}
+								</div>
+							)}
 						</div>
-					)}
+					</div>
+				</div>
+
+				<div className="mt-8 text-center">
+					<p className="text-cocoa/60 text-sm">
+						Powered by TensorFlow.js • Real-time inference in your browser
+					</p>
 				</div>
 			</div>
 		</div>

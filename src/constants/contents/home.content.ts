@@ -2,7 +2,7 @@ export const faqItems = [
 	{
 		question: "What languages are supported?",
 		answer:
-			"We support translation to all SEA LION supported languages including English, Malay, Indonesian, Thai, Vietnamese, and more.",
+			"Currently, we support Malay, and we are working on adding more languages soon.",
 	},
 	{
 		question: "How accurate is the translation?",
@@ -12,7 +12,7 @@ export const faqItems = [
 	{
 		question: "What devices and browsers work?",
 		answer:
-			"Works on modern browsers with WebRTC support: Chrome, Firefox, Safari, Edge. Requires camera access for gesture capture.",
+			"It works on modern browsers with WebRTC support: Chrome, Firefox, Safari, and Edge. Camera access is required for gesture capture.",
 	},
 	{
 		question: "How do you handle my data?",
@@ -22,7 +22,7 @@ export const faqItems = [
 	{
 		question: "Will this work offline?",
 		answer:
-			"Currently requires internet for AI translation. We're working on offline gesture recognition for future releases.",
+			"Currently, an internet connection is required for AI translation. We are working on offline gesture recognition for future releases.",
 	},
 ] as const;
 
@@ -57,87 +57,83 @@ export const metricsData = [
 		delta: 5,
 	},
 	{ label: "Average response time", value: "< 200ms", delta: 30 },
-	{ label: "Supported gestures", value: "50+", delta: 15 },
-	{ label: "Frame rate", value: "30 FPS", delta: 0 },
+	{ label: "Supported gestures", value: "4", delta: 10 },
+	{ label: "Frame rate", value: "50 FPS", delta: 0 },
 ] as const;
 
 export const programmeFitAreas = [
 	{
-		title: "Innovation",
-		percentage: "20 percent",
-		icon: "Lightbulb",
-		points: [
-			"Hands first AI chat with BIM input.",
-			"Landmarks plus classic classifier lowers latency.",
-			"Avatar gives visual feedback for clarity.",
-		],
-	},
-	{
-		title: "Technical implementation",
-		percentage: "30 percent",
-		icon: "Code",
-		points: [
-			"MediaPipe for hand landmarks.",
-			"Scikit Learn model for gesture class.",
-			"Flask API connects to SEA LION for text.",
-		],
-	},
-	{
-		title: "Impact and relevance",
-		percentage: "30 percent",
+		title: "Impact for SEA",
 		icon: "Globe",
+		percentage: "30%",
 		points: [
-			"Built for Malay Sign Language users.",
-			"Text output in SEA LION supported languages.",
-			"Fits public info and service access use cases.",
+			"Removes communication barriers for deaf and hard of hearing users",
+			"Supports local language pairs such as Malay, but we are working on adding more languages soon.",
+			"Cuts waiting time for human relays, making deaf communities more independent",
+			"Empowers users to communicate without intermediaries",
 		],
 	},
 	{
-		title: "Usability",
-		percentage: "10 percent",
-		icon: "Eye",
+		title: "Feasibility and Prototype",
+		icon: "Rocket",
+		percentage: "30%",
 		points: [
-			"No login for the demo.",
-			"Works on common laptops and phones.",
-			"Keyboard support and clear focus states.",
+			"Live site and API that judges can try now",
+			"Client model loads fast, server fallback when needed",
+			"Median latency under one second in simple tests",
+			"Clear limits and graceful failure states",
 		],
 	},
 	{
-		title: "Presentation and demonstration",
-		percentage: "10 percent",
-		icon: "Presentation",
+		title: "Innovation and Differentiation",
+		icon: "Sparkles",
+		percentage: "15%",
 		points: [
-			"Short video shows the full flow.",
-			"Live demo link on this page.",
-			"Repo and docs are public.",
+			"Real time hand or text input to clean output in the browser",
+			"Custom glossary for domain terms to keep meaning",
+			"Client first approach reduces cost and improves privacy",
 		],
 	},
 	{
-		title: "Feasibility",
-		percentage: "Round 1 B",
-		icon: "Target",
+		title: "Technical Implementation",
+		icon: "Cpu",
+		percentage: "15%",
 		points: [
-			"Prototype runs in the browser with webcam.",
-			"Back end API is small and easy to host.",
-			"Clear next steps, dataset growth and fine tuning.",
+			"Client model runs in the browser",
+			"Model runs in the browser",
+			"Queue and logging only for errors, simple and safe",
+		],
+	},
+	{
+		title: "Ethics and Safety",
+		icon: "Shield",
+		percentage: "5%",
+		points: [
+			"Consent copy in place and clear privacy note on page",
+			"No permanent storage of media in the demo",
+			"Request filtering to limit harmful content",
+		],
+	},
+	{
+		title: "User Experience",
+		icon: "Smile",
+		percentage: "5%",
+		points: [
+			"One click start, no account needed for the demo",
+			"Short video explains the flow, embedded on the site",
+			"Clean layout with large buttons and readable text",
 		],
 	},
 ] as const;
 
 export const challengeBadges = [
-	{
-		text: "Round 1 A, Innovation",
-		variant: "default" as const,
-	},
-	{
-		text: "Round 1 B, Feasibility",
-		variant: "default" as const,
-	},
-	{
-		text: "Round 2 focus",
-		variant: "primary" as const,
-	},
-] as const;
+	{ text: "Round 1B" },
+	{ text: "Working PoC" },
+	{ text: "Feasibility focused" },
+	{ text: "Accessibility" },
+	{ text: "Ai for good" },
+	{ text: "Privacy by design", variant: "primary" },
+];
 
 export const pipelineTimingData = [
 	{ name: "Capture and landmarks", ms: 28 },

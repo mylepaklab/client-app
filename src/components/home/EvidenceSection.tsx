@@ -1,11 +1,10 @@
 import { useState } from "react";
-import { Play } from "lucide-react";
 import { motion } from "framer-motion";
 import {
 	evidenceTabs,
 	metricsData,
-	pipelineTimingData,
-	testMatrixData,
+	// pipelineTimingData,
+	// testMatrixData,
 } from "~/constants/contents/home.content";
 
 interface EvidenceSectionProps {
@@ -17,10 +16,10 @@ export function EvidenceSection({
 	fadeInUp,
 	staggerContainer,
 }: EvidenceSectionProps) {
-	const [openFaq, setOpenFaq] = useState<number | null>(null);
+	const [openFaq, setOpenFaq] = useState<number | null>(1);
 
 	return (
-		<section className="py-20 px-4 sm:px-6 lg:px-8">
+		<section id="evidence" className="py-20 px-4 sm:px-6 lg:px-8">
 			<div className="max-w-7xl mx-auto">
 				<motion.div
 					initial="initial"
@@ -35,7 +34,6 @@ export function EvidenceSection({
 						Proof
 					</motion.h2>
 
-					{/* Tabs */}
 					<motion.div
 						className="mx-auto mb-8 w-full max-w-3xl rounded-xl bg-surface p-1 border border-brand-200"
 						variants={fadeInUp}
@@ -44,7 +42,7 @@ export function EvidenceSection({
 							{evidenceTabs.map((tab, index) => (
 								<button
 									key={tab}
-									onClick={() => setOpenFaq(index)} // reuse state slot to avoid new state
+									onClick={() => setOpenFaq(index)}
 									className={`py-2.5 rounded-lg transition ${
 										openFaq === index
 											? "bg-brand-700 text-white shadow"
@@ -59,9 +57,7 @@ export function EvidenceSection({
 						</div>
 					</motion.div>
 
-					{/* Panels */}
 					<div role="tabpanel" hidden={openFaq !== 0}>
-						{/* Result stats */}
 						<motion.div
 							className="bg-surface rounded-2xl p-8 shadow-lg mb-8"
 							variants={fadeInUp}
@@ -76,7 +72,9 @@ export function EvidenceSection({
 											{m.value}
 										</div>
 										<div className="text-sm text-ink">{m.label}</div>
-										{m.delta && (
+
+										{/* WIP */}
+										{/* {m.delta && (
 											<div
 												className={`text-xs mt-1 ${
 													m.delta > 0 ? "text-green-700" : "text-red-700"
@@ -84,18 +82,14 @@ export function EvidenceSection({
 											>
 												{m.delta > 0 ? "▲" : "▼"} {Math.abs(m.delta)}%
 											</div>
-										)}
+										)} */}
 									</div>
 								))}
 							</div>
-							<p className="text-xs text-brand-600 mt-6 text-center">
-								Method, single run on the listed test device, fixed seed,
-								stratified split. Replace with your exact details.
-							</p>
 						</motion.div>
 
-						{/* Pipeline timing */}
-						<motion.div
+						{/* WIP */}
+						{/* <motion.div
 							className="bg-surface rounded-2xl p-8 shadow-lg mb-8"
 							variants={fadeInUp}
 						>
@@ -119,10 +113,9 @@ export function EvidenceSection({
 									</div>
 								))}
 							</div>
-						</motion.div>
+						</motion.div> */}
 
-						{/* Test matrix */}
-						<motion.div
+						{/* <motion.div
 							className="bg-surface rounded-2xl p-8 shadow-lg"
 							variants={fadeInUp}
 						>
@@ -148,34 +141,33 @@ export function EvidenceSection({
 									</div>
 								))}
 							</div>
-						</motion.div>
+						</motion.div> */}
 					</div>
 
-					{/* Video panel */}
 					<div role="tabpanel" hidden={openFaq !== 1}>
 						<motion.div
 							className="bg-surface rounded-2xl p-8 shadow-lg"
 							variants={fadeInUp}
 						>
-							<div className="aspect-video bg-brand-100 rounded-xl border-2 border-dashed border-brand-300 flex items-center justify-center mb-4">
-								<a
-									href="https://www.youtube.com/watch?v=YOUR_VIDEO_ID"
-									className="inline-flex items-center space-x-2 bg-brand-700 text-white px-6 py-3 rounded-lg font-semibold hover:bg-brand-800 focus:ring-4 focus:ring-brand-600"
-								>
-									<Play className="w-5 h-5" />
-									<span>Watch demo video</span>
-								</a>
+							<div className="aspect-video bg-brand-100 rounded-xl border-2 border-dashed border-brand-300 flex items-center justify-center mb-4 overflow-hidden">
+								<iframe
+									className="w-full h-full rounded-xl"
+									src="https://www.youtube.com/embed/J_8QQJmwkWA"
+									title="BIMTranslator Demo Video"
+									allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+									allowFullScreen
+									loading="lazy"
+								/>
 							</div>
 							<p className="text-sm text-ink text-center">
-								Short clip that shows capture, classify, translate, and avatar.
+								Short clip about what is BIMTranslator and how it works.
 							</p>
 						</motion.div>
 					</div>
 
-					{/* Repo panel */}
 					<div role="tabpanel" hidden={openFaq !== 2}>
 						<motion.div
-							className="grid md:grid-cols-2 gap-8"
+							// className="grid md:grid-cols-2 gap-8"
 							variants={fadeInUp}
 						>
 							<div className="bg-surface rounded-2xl p-8 shadow-lg">
@@ -184,13 +176,13 @@ export function EvidenceSection({
 								</h3>
 								<p className="text-ink mb-4">Code, issues, and setup guide.</p>
 								<a
-									href="https://github.com/mylepaklab/bimtranslator"
+									href="https://github.com/mylepaklab?tab=repositories"
 									className="text-brand-700 hover:text-brand-800 font-medium"
 								>
 									Open repo →
 								</a>
 							</div>
-							<div className="bg-surface rounded-2xl p-8 shadow-lg">
+							{/* <div className="bg-surface rounded-2xl p-8 shadow-lg">
 								<h3 className="text-xl font-semibold text-charcoal mb-2">
 									Pitch deck
 								</h3>
@@ -198,12 +190,12 @@ export function EvidenceSection({
 									Slides for the programme judges.
 								</p>
 								<a
-									href="https://your-deck-link"
+									href="#"
 									className="text-brand-700 hover:text-brand-800 font-medium"
 								>
 									View deck →
 								</a>
-							</div>
+							</div> */}
 						</motion.div>
 					</div>
 				</motion.div>

@@ -4,7 +4,7 @@ import { HeroSection } from "~/components/home/HeroSection";
 import { ProblemSection } from "~/components/home/ProblemSection";
 import { HowItWorksSection } from "~/components/home/HowItWorksSection";
 import { ProgrammeFitSection } from "~/components/home/ProgrammeFitSection";
-import { LivePreviewSection } from "~/components/home/LivePreviewSection";
+import { ImpactSection } from "~/components/home/ImpactSection";
 import { EvidenceSection } from "~/components/home/EvidenceSection";
 import { FaqSection } from "~/components/home/FaqSection";
 import { OurTeamSection } from "~/components/home/our-team";
@@ -26,6 +26,8 @@ export function Page() {
 					staggerContainer={staggerContainer}
 				/>
 
+				<ImpactSection fadeInUp={fadeInUp} />
+
 				<HowItWorksSection
 					fadeInUp={fadeInUp}
 					staggerContainer={staggerContainer}
@@ -35,8 +37,6 @@ export function Page() {
 					fadeInUp={fadeInUp}
 					staggerContainer={staggerContainer}
 				/>
-
-				<LivePreviewSection fadeInUp={fadeInUp} />
 
 				<EvidenceSection
 					fadeInUp={fadeInUp}

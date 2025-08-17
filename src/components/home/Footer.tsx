@@ -23,13 +23,13 @@ export function Footer() {
 						</p>
 						<div className="flex space-x-4">
 							<a
-								href="mailto:hello@bimtranslator.app"
+								href="mailto:mylepaklab@gmail.com"
 								className="w-10 h-10 bg-brand-600 hover:bg-brand-700 rounded-lg flex items-center justify-center transition-colors"
 							>
 								<Mail className="w-5 h-5 text-white" />
 							</a>
 							<a
-								href="https://github.com/mylepaklab/bimtranslator"
+								href="https://github.com/mylepaklab?tab=repositories"
 								className="w-10 h-10 bg-brand-600 hover:bg-brand-700 rounded-lg flex items-center justify-center transition-colors"
 							>
 								<Github className="w-5 h-5 text-white" />

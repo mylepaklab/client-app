@@ -15,7 +15,7 @@ export function ProgrammeFitSection({
 	staggerContainer,
 }: ProgrammeFitSectionProps) {
 	return (
-		<section className="py-20 px-4 sm:px-6 lg:px-8">
+		<section id="fit" className="py-20 px-4 sm:px-6 lg:px-8">
 			<div className="max-w-7xl mx-auto">
 				<motion.div
 					initial="initial"
@@ -29,12 +29,10 @@ export function ProgrammeFitSection({
 					>
 						SEA Developer Challenge alignment
 					</motion.h2>
-
 					<motion.p className="text-ink text-center mb-10" variants={fadeInUp}>
 						We map BIMTranslator to the scoring used in this challenge.
 					</motion.p>
 
-					{/* Round badges */}
 					<motion.div
 						className="flex flex-wrap justify-center gap-3 mb-10"
 						variants={fadeInUp}
@@ -52,7 +50,6 @@ export function ProgrammeFitSection({
 							</span>
 						))}
 					</motion.div>
-
 					<div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
 						{programmeFitAreas.map((area, index) => {
 							const IconComponent = getIcon(area.icon);

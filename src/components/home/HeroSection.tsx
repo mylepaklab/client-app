@@ -8,7 +8,10 @@ interface HeroSectionProps {
 
 export function HeroSection({ fadeInUp, staggerContainer }: HeroSectionProps) {
 	return (
-		<section className="relative py-24 px-4 sm:px-6 lg:px-8 overflow-hidden">
+		<section
+			id="hero"
+			className="relative py-24 px-4 sm:px-6 lg:px-8 overflow-hidden"
+		>
 			<div className="absolute inset-0 bg-gradient-to-br from-brand-50 via-white to-brand-100"></div>
 			<div className="absolute inset-0 bg-[radial-gradient(circle_at_1px_1px,rgba(175,95,40,0.08)_1px,transparent_0)] bg-[length:24px_24px]"></div>
 			<div className="relative max-w-6xl mx-auto">
@@ -55,7 +58,7 @@ export function HeroSection({ fadeInUp, staggerContainer }: HeroSectionProps) {
 							whileTap={{ scale: 0.98 }}
 						>
 							<Play className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
-							<span>Start chat</span>
+							<span>Start Interacting</span>
 						</motion.a>
 					</motion.div>
 

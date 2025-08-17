@@ -1,8 +1,4 @@
 import { useRef, useEffect, useState, useCallback } from "react";
-import * as tf from "@tensorflow/tfjs";
-import "@tensorflow/tfjs-backend-webgl";
-import "@tensorflow/tfjs-layers";
-
 import Webcam from "react-webcam";
 
 const MODEL_URL = "/model/model.json";
@@ -16,10 +12,10 @@ export function HandPOC() {
 	const webcamRef = useRef<Webcam>(null);
 	const rafRef = useRef<number | null>(null);
 
-	const [model, setModel] = useState<tf.GraphModel | tf.LayersModel | null>(
-		null
-	);
-	const [labels, setLabels] = useState<string[]>([]);
+	const tfRef = useRef<any>(null);
+	const modelRef = useRef<any>(null);
+	const labelsRef = useRef<string[]>([]);
+
 	const [prediction, setPrediction] = useState<Pred>(null);
 	const [error, setError] = useState<string | null>(null);
 	const [translationResult, setTranslationResult] = useState<any>(null);
@@ -46,8 +42,12 @@ export function HandPOC() {
 	}, []);
 
 	const predictFrame = useCallback(() => {
+		const tf = tfRef.current;
+		const model = modelRef.current;
+		const labels = labelsRef.current;
+
 		const cam = webcamRef.current;
-		if (!cam?.video || !model) return;
+		if (!tf || !model || !cam?.video) return;
 
 		const video = cam.video as HTMLVideoElement;
 		if (!video || video.readyState !== 4) return;
@@ -60,10 +60,14 @@ export function HandPOC() {
 				.div(255)
 				.expandDims(0);
 
-			// Works for both LayersModel and GraphModel when the output is logits or probabilities
-			const out = (model as any).predict(img) as tf.Tensor;
-			const post = tf.softmax(out);
-			return post.dataSync();
+			const out = model.predict(img);
+
+			let logits = out;
+			if (Array.isArray(out)) logits = out[0];
+
+			const post = tf.softmax(logits);
+			const data = post.dataSync();
+			return data as Float32Array;
 		});
 
 		let maxIdx = 0;
@@ -93,7 +97,7 @@ export function HandPOC() {
 				? { className, probability: prob }
 				: { className: "Uncertain", probability: prob }
 		);
-	}, [model, labels, detectedText, translateText]);
+	}, [detectedText, translateText]);
 
 	useEffect(() => {
 		let cancelled = false;
@@ -104,22 +108,24 @@ export function HandPOC() {
 			predictFrame();
 		};
 
-		const load = async () => {
+		const boot = async () => {
 			try {
+				if (typeof window === "undefined") return;
+
+				const tf = await import("@tensorflow/tfjs");
+				await import("@tensorflow/tfjs-layers");
+				await import("@tensorflow/tfjs-backend-webgl");
+
 				await tf.setBackend("webgl").catch(() => tf.setBackend("cpu"));
 				await tf.ready();
+				console.log("tfjs", tf.version.tfjs, "backend", tf.getBackend());
 
-				// keep a reference so layers stay included in bundles
-				const keep = tf.layers.zeroPadding2d;
-				void keep;
+				void tf.layers.zeroPadding2d;
 
-				let loaded: tf.GraphModel | tf.LayersModel;
-
+				let loaded: any;
 				try {
-					// Teachable Machine image projects are usually Layers models
 					loaded = await tf.loadLayersModel(MODEL_URL);
 				} catch {
-					// Fallback in case the export is a Graph model
 					loaded = await tf.loadGraphModel(MODEL_URL);
 				}
 
@@ -127,24 +133,25 @@ export function HandPOC() {
 				const lbls: string[] = meta.labels || [];
 
 				if (!cancelled) {
-					setModel(loaded);
-					setLabels(lbls);
+					tfRef.current = tf;
+					modelRef.current = loaded;
+					labelsRef.current = lbls;
 
 					tf.tidy(() => {
 						const warm = tf.zeros([1, INPUT_SIZE, INPUT_SIZE, 3]);
-						const out = (loaded as any).predict?.(warm);
-						if (Array.isArray(out)) out.forEach((t) => t?.dispose?.());
+						const out = loaded.predict?.(warm as any);
+						if (Array.isArray(out)) out.forEach((t: any) => t?.dispose?.());
 						else out?.dispose?.();
 					});
 
 					loop();
 				}
 			} catch (e: any) {
-				if (!cancelled) setError(e?.message || "Failed to load model");
+				if (!cancelled) setError(e?.message || "Failed to initialize AI");
 			}
 		};
 
-		load();
+		boot();
 
 		return () => {
 			cancelled = true;

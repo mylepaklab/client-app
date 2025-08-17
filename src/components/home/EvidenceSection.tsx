@@ -148,10 +148,6 @@ export function EvidenceSection({
 									</div>
 								))}
 							</div>
-							<p className="text-xs text-brand-600 mt-4">
-								Replace with your exact devices and versions. Include any known
-								limits.
-							</p>
 						</motion.div>
 					</div>
 

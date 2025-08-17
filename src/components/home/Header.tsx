@@ -24,7 +24,7 @@ export function Header() {
 					</div>
 					<nav className="hidden md:flex items-center space-x-8">
 						<a
-							href="/test-connection"
+							href="https://docker-react-g40o.onrender.com"
 							className="text-charcoal hover:text-brand-700 transition-colors font-medium"
 						>
 							Demo
@@ -58,7 +58,7 @@ export function Header() {
 					>
 						<nav className="flex flex-col space-y-3">
 							<a
-								href="/test-connection"
+								href="https://docker-react-g40o.onrender.com"
 								className="text-charcoal hover:text-brand-700 transition-colors px-2 py-2 font-medium rounded-lg hover:bg-brand-50"
 								onClick={() => setMobileMenuOpen(false)}
 							>

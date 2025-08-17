@@ -49,7 +49,7 @@ export function HeroSection({ fadeInUp, staggerContainer }: HeroSectionProps) {
 						variants={fadeInUp}
 					>
 						<motion.a
-							href="/chat"
+							href="/test-connection"
 							className="group bg-gradient-to-r from-brand-700 to-brand-800 text-white px-10 py-5 rounded-2xl font-bold text-lg hover:from-brand-800 hover:to-brand-900 focus:ring-4 focus:ring-brand-600 transition-all duration-200 flex items-center space-x-3 shadow-xl hover:shadow-2xl"
 							whileHover={{ scale: 1.02 }}
 							whileTap={{ scale: 0.98 }}

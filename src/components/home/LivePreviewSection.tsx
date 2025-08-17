@@ -162,7 +162,7 @@ export function LivePreviewSection({ fadeInUp }: LivePreviewSectionProps) {
 							)}
 						</div>
 						<motion.a
-							href="/chat"
+							href="/test-connection"
 							className={`inline-flex items-center space-x-2 px-8 py-4 rounded-xl font-semibold text-lg transition-colors ${
 								isStreaming
 									? "bg-brand-700 text-white hover:bg-brand-800 focus:ring-4 focus:ring-brand-600"

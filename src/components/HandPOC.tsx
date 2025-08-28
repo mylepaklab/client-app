@@ -4,11 +4,8 @@ import * as tmImage from "@teachablemachine/image";
 import { api } from "../lib/axios";
 
 const MODEL_URL = "/model/";
-const TRANSLATION_API_URL =
-	"https://backend-api-fm4g.onrender.com/translate_string";
 
 export function HandPOC() {
-	const [inputText, setInputText] = useState("AAYANNNYAAAASTOP");
 	const [responseText, setResponseText] = useState("");
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState("");
@@ -35,9 +32,34 @@ export function HandPOC() {
 		loadModel();
 	}, []);
 
-	useEffect(() => {
-		setInputText(capturedSequence);
-	}, [capturedSequence]);
+	const handleApiCall = async (sequence: string) => {
+		setLoading(true);
+		setError("");
+		setResponseText("");
+		try {
+			const response = await api.get(
+				`/translate_string?text_to_translate=${encodeURIComponent(sequence)}`
+			);
+			setResponseText(
+				typeof response === "string" ? response : JSON.stringify(response)
+			);
+		} catch (err: any) {
+			console.error("API call failed:", err);
+			setError(
+				err.response?.data?.message || err.message || "Error calling API"
+			);
+		} finally {
+			setLoading(false);
+		}
+	};
+
+	const resetCapture = () => {
+		setCapturedSequence("");
+		setIsStopped(false);
+		setPredictionLabel("");
+		setResponseText("");
+		setError("");
+	};
 
 	useEffect(() => {
 		let lastCategory: string | null = null;
@@ -66,8 +88,10 @@ export function HandPOC() {
 					);
 
 					if (label === "stop") {
-						setCapturedSequence((prev) => prev + "stop");
+						const finalSequence = capturedSequence + "stop";
+						setCapturedSequence(finalSequence);
 						setIsStopped(true);
+						handleApiCall(finalSequence);
 						return;
 					}
 
@@ -87,39 +111,6 @@ export function HandPOC() {
 		const intervalId = setInterval(runPrediction, 1000);
 		return () => clearInterval(intervalId);
 	}, [isStopped]);
-
-	const handleApiCall = async () => {
-		setLoading(true);
-		setError("");
-		setResponseText("");
-		try {
-			const response = await api.get(
-				`${TRANSLATION_API_URL}?text_to_translate=${encodeURIComponent(
-					inputText
-				)}`
-			);
-
-			setResponseText(
-				typeof response === "string" ? response : JSON.stringify(response)
-			);
-		} catch (err: any) {
-			console.error("API call failed:", err);
-			setError(
-				err.response?.data?.message || err.message || "Error calling API"
-			);
-		} finally {
-			setLoading(false);
-		}
-	};
-
-	const resetCapture = () => {
-		setCapturedSequence("");
-		setInputText("");
-		setIsStopped(false);
-		setPredictionLabel("");
-		setResponseText("");
-		setError("");
-	};
 
 	return (
 		<div
@@ -185,106 +176,81 @@ export function HandPOC() {
 							>
 								Captured Sequence: {capturedSequence}
 							</div>
+
+							{loading && (
+								<div
+									className="text-lg"
+									style={{ color: "var(--color-brand-600)" }}
+								>
+									🔄 Translating...
+								</div>
+							)}
 						</div>
 					</div>
 
-					<div
-						className="p-4 border rounded-lg"
-						style={{
-							backgroundColor: "var(--color-brand-50)",
-							borderColor: "var(--color-brand-300)",
-						}}
-					>
-						<h4
-							className="font-semibold mb-4"
-							style={{ color: "var(--color-ink)" }}
+					{/* Translation Results */}
+					{(responseText || error) && (
+						<div
+							className="p-4 border rounded-lg"
+							style={{
+								backgroundColor: "var(--color-brand-50)",
+								borderColor: "var(--color-brand-300)",
+							}}
 						>
-							BIM Translator:
-						</h4>
+							<h4
+								className="font-semibold mb-4"
+								style={{ color: "var(--color-ink)" }}
+							>
+								Translation Result:
+							</h4>
 
-						<div className="space-y-4">
-							<input
-								type="text"
-								value={inputText}
-								onChange={(e) => setInputText(e.target.value)}
-								className="w-full p-3 border rounded-lg"
+							{error && (
+								<div
+									className="p-3 border rounded mb-4"
+									style={{
+										backgroundColor: "var(--color-brand-100)",
+										borderColor: "var(--color-brand-400)",
+										color: "var(--color-cocoa)",
+									}}
+								>
+									<strong>Error:</strong> {error}
+								</div>
+							)}
+
+							{responseText && !error && (
+								<div
+									className="p-3 border rounded mb-4"
+									style={{
+										backgroundColor: "var(--color-brand-100)",
+										borderColor: "var(--color-brand-400)",
+										color: "var(--color-ink)",
+									}}
+								>
+									<strong>Translation:</strong>
+									<p className="mt-2 text-lg">{responseText}</p>
+								</div>
+							)}
+
+							<button
+								onClick={resetCapture}
+								className="px-6 py-3 text-white rounded-lg transition-colors font-semibold"
 								style={{
-									borderColor: "var(--color-brand-300)",
-									backgroundColor: "var(--color-surface)",
-									color: "var(--color-ink)",
+									backgroundColor: "var(--color-charcoal)",
 								}}
-								placeholder="Enter Text Sequence"
-								disabled={isStopped}
-							/>
-
-							<div className="flex gap-3">
-								<button
-									onClick={handleApiCall}
-									className="flex-1 px-6 py-3 text-white rounded-lg transition-colors font-semibold"
-									style={{
-										backgroundColor: "var(--color-brand-600)",
-									}}
-									onMouseEnter={(e) =>
-										(e.currentTarget.style.backgroundColor =
-											"var(--color-brand-700)")
-									}
-									onMouseLeave={(e) =>
-										(e.currentTarget.style.backgroundColor =
-											"var(--color-brand-600)")
-									}
-									disabled={loading}
-								>
-									{loading ? "Translating..." : "Translate"}
-								</button>
-
-								<button
-									onClick={resetCapture}
-									className="px-6 py-3 text-white rounded-lg transition-colors font-semibold"
-									style={{
-										backgroundColor: "var(--color-charcoal)",
-									}}
-									onMouseEnter={(e) =>
-										(e.currentTarget.style.backgroundColor =
-											"var(--color-cocoa)")
-									}
-									onMouseLeave={(e) =>
-										(e.currentTarget.style.backgroundColor =
-											"var(--color-charcoal)")
-									}
-								>
-									Reset
-								</button>
-							</div>
+								onMouseEnter={(e) =>
+									(e.currentTarget.style.backgroundColor = "var(--color-cocoa)")
+								}
+								onMouseLeave={(e) =>
+									(e.currentTarget.style.backgroundColor =
+										"var(--color-charcoal)")
+								}
+							>
+								Start New Translation
+							</button>
 						</div>
+					)}
 
-						{error && (
-							<div
-								className="mt-4 p-3 border rounded"
-								style={{
-									backgroundColor: "var(--color-brand-100)",
-									borderColor: "var(--color-brand-400)",
-									color: "var(--color-cocoa)",
-								}}
-							>
-								<strong>Error:</strong> {error}
-							</div>
-						)}
-
-						{responseText && !error && (
-							<div
-								className="mt-4 p-3 border rounded"
-								style={{
-									backgroundColor: "var(--color-brand-100)",
-									borderColor: "var(--color-brand-400)",
-									color: "var(--color-ink)",
-								}}
-							>
-								<strong>Translation:</strong>
-								<p className="mt-2">{responseText}</p>
-							</div>
-						)}
-					</div>
-
+					{/* Usage Instructions */}
 					<div
 						className="p-4 border rounded-lg"
 						style={{
@@ -305,8 +271,12 @@ export function HandPOC() {
 							<li>• Position your hand clearly in front of the camera</li>
 							<li>• Make the trained gestures: A, N, YA, or STOP</li>
 							<li>• Hold gestures steady for 3 seconds to register</li>
-							<li>• Make "STOP" gesture to finish sequence capture</li>
-							<li>• Use the translate button to convert sequence to text</li>
+							<li>
+								• Make "STOP" gesture to automatically translate the sequence
+							</li>
+							<li>
+								• Use "Start New Translation" button to reset and begin again
+							</li>
 						</ul>
 					</div>
 				</div>

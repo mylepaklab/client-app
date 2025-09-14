@@ -23,13 +23,13 @@ export function Footer() {
 						</p>
 						<div className="flex space-x-4">
 							<a
-								href="mailto:hello@bimtranslator.app"
+								href="mailto:mylepaklab@gmail.com"
 								className="w-10 h-10 bg-brand-600 hover:bg-brand-700 rounded-lg flex items-center justify-center transition-colors"
 							>
 								<Mail className="w-5 h-5 text-white" />
 							</a>
 							<a
-								href="https://github.com/mylepaklab/bimtranslator"
+								href="https://github.com/mylepaklab?tab=repositories"
 								className="w-10 h-10 bg-brand-600 hover:bg-brand-700 rounded-lg flex items-center justify-center transition-colors"
 							>
 								<Github className="w-5 h-5 text-white" />
@@ -41,7 +41,7 @@ export function Footer() {
 						<ul className="space-y-3 text-gray-300">
 							<li>
 								<a
-									href="/chat"
+									href="https://docker-react-g40o.onrender.com"
 									className="hover:text-brand-400 transition-colors flex items-center space-x-2 group"
 								>
 									<span>Demo</span>
@@ -96,11 +96,6 @@ export function Footer() {
 						<p className="text-gray-400 mb-4 md:mb-0">
 							&copy; 2025 MyLepakLab. All rights reserved.
 						</p>
-						<div className="flex items-center space-x-2 text-gray-400">
-							<span>Made with</span>
-							<span className="text-red-400">❤️</span>
-							<span>for the PAN-SEA AI DEVELOPER CHALLENGE 2025 </span>
-						</div>
 					</div>
 				</div>
 			</div>

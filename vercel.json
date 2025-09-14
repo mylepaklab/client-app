@@ -1,0 +1,5 @@
+{
+	"buildCommand": "pnpm farm build",
+	"outputDirectory": "dist",
+	"rewrites": [{ "source": "/(.*)", "destination": "/" }]
+}

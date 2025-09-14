@@ -10,7 +10,7 @@ export function ProblemSection({
 	staggerContainer,
 }: ProblemSectionProps) {
 	return (
-		<section className="py-24 px-4 sm:px-6 lg:px-8 bg-white">
+		<section id="problem" className="py-24 px-4 sm:px-6 lg:px-8 bg-white">
 			<div className="max-w-6xl mx-auto">
 				<motion.div
 					initial="initial"
@@ -26,7 +26,6 @@ export function ProblemSection({
 					</motion.h2>
 
 					<motion.div className="grid md:grid-cols-2 gap-8" variants={fadeInUp}>
-						{/* Main problems */}
 						<div className="p-8 rounded-3xl bg-brand-50 border border-brand-200 shadow-sm">
 							<h3 className="text-xl font-semibold text-charcoal mb-4">
 								Main problems
@@ -55,7 +54,6 @@ export function ProblemSection({
 							</ul>
 						</div>
 
-						{/* What BIMTranslator does */}
 						<div className="p-8 rounded-3xl bg-gradient-to-br from-brand-100 to-brand-200 border border-brand-200 shadow-lg">
 							<h3 className="text-xl font-semibold text-charcoal mb-4">
 								What BIMTranslator does
@@ -82,10 +80,6 @@ export function ProblemSection({
 									</span>
 								</li>
 							</ul>
-							<p className="text-sm text-brand-700 mt-4">
-								Scope, Malay Sign Language to text, output uses SEA LION
-								supported languages.
-							</p>
 						</div>
 					</motion.div>
 				</motion.div>

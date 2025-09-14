@@ -96,7 +96,7 @@ export function ImpactSection({ fadeInUp }: ImpactFeasibilitySectionProps) {
 
 				<motion.div variants={fadeInUp} className="text-center">
 					<a
-						href="https://docker-react-g40o.onrender.com"
+						href="/demo"
 						className="inline-flex items-center gap-2 bg-brand-700 text-white px-8 py-4 rounded-xl font-semibold hover:bg-brand-800 focus:ring-4 focus:ring-brand-600"
 					>
 						<Rocket className="w-5 h-5" />

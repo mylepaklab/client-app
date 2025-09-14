@@ -4,7 +4,7 @@
 
 ## What Judges Can Try
 
-- **Live demo:** [https://docker-react-g40o.onrender.com](https://docker-react-g40o.onrender.com)
+- **Live demo:** [/demo](/demo)
 - **Two minute video:** [https://www.youtube.com/watch?v=J_8QQJmwkWA](https://www.youtube.com/watch?v=J_8QQJmwkWA)
 
 **API sample:**
@@ -91,7 +91,7 @@ Open your browser and go to [http://localhost:3000](http://localhost:3000) to se
 
 ## Usage
 
-- **Demo:** [https://docker-react-g40o.onrender.com](https://docker-react-g40o.onrender.com)
+- **Demo:** [/demo](/demo)
 
 ## Legal
 

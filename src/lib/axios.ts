@@ -15,20 +15,6 @@ export const api = Axios.create({
 
 api.interceptors.request.use(authRequestInterceptor);
 
-api.interceptors.response.use(
-	(response) => {
-		return response.data;
-	}
-	// (error) => {
-	// 	const message = error.response?.data?.message || error.message;
-
-	// 	if (error.response?.status === 401) {
-	// 		//   const searchParams = new URLSearchParams();
-	// 		//   const redirectTo =
-	// 		//     searchParams.get('redirectTo') || window.location.pathname;
-	// 		//   window.location.href = paths.auth.login.getHref(redirectTo);
-	// 	}
-
-	// 	return Promise.reject(error);
-	// }
-);
+api.interceptors.response.use((response) => {
+	return response;
+});

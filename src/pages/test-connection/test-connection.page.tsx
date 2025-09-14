@@ -1,5 +1,5 @@
 import { HandPOC } from "~/components/HandPOC";
 
-export function TestConnectionPage() {
+export function DemoPage() {
 	return <HandPOC />;
 }

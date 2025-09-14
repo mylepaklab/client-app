@@ -1,12 +1,12 @@
-import { Header } from "~/components/home/Header";
+import { Header } from "~/components/home/header";
 import { Footer } from "~/components/home/Footer";
-import { HeroSection } from "~/components/home/HeroSection";
-import { ProblemSection } from "~/components/home/ProblemSection";
-import { HowItWorksSection } from "~/components/home/HowItWorksSection";
-import { ProgrammeFitSection } from "~/components/home/ProgrammeFitSection";
-import { ImpactSection } from "~/components/home/ImpactSection";
-import { EvidenceSection } from "~/components/home/EvidenceSection";
-import { FaqSection } from "~/components/home/FaqSection";
+import { HeroSection } from "~/components/home/hero-section";
+import { ProblemSection } from "~/components/home/problem-section";
+import { HowItWorksSection } from "~/components/home/how-it-works-section";
+import { ProgrammeFitSection } from "~/components/home/programme-fit-section";
+import { ImpactSection } from "~/components/home/impact-section";
+import { EvidenceSection } from "~/components/home/evidence-section";
+import { FaqSection } from "~/components/home/faq-section";
 import { OurTeamSection } from "~/components/home/our-team";
 
 import { useAnimation } from "~/hooks/use-animation.hook";

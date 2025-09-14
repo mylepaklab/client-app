@@ -18,7 +18,6 @@ export function Header() {
 	const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 	const [activeId, setActiveId] = useState<string>("");
 
-	// Observe section in view for active highlight
 	useEffect(() => {
 		const ids = NAV_ITEMS.map((n) => n.href.replace("#", ""));
 		const els = ids

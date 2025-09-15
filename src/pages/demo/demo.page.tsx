@@ -1,5 +1,5 @@
-import { SignPlayerMediapipe } from "~/components/demo/sign-mediapipe";
+import { HandSignPlayer } from "~/components/demo/hand-sign";
 
 export function DemoPage() {
-	return <SignPlayerMediapipe />;
+	return <HandSignPlayer />;
 }

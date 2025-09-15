@@ -67,7 +67,6 @@ export function SignPlayerMediapipe() {
 		};
 	}, []);
 
-	// Live overlay loop, draw landmarks only
 	useEffect(() => {
 		const loop = () => {
 			const model = modelRef.current;
@@ -312,7 +311,9 @@ export function SignPlayerMediapipe() {
 									</div>
 									<div style={{ color: "var(--color-ink)" }}>
 										<strong>Confidence</strong>:{" "}
-										{confidence !== null ? confidence.toFixed(4) : "-"}
+										{typeof confidence === "number"
+											? confidence.toFixed(4)
+											: "-"}
 									</div>
 								</div>
 							)}

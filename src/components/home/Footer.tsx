@@ -41,7 +41,7 @@ export function Footer() {
 						<ul className="space-y-3 text-gray-300">
 							<li>
 								<a
-									href="https://docker-react-g40o.onrender.com"
+									href="/demo"
 									className="hover:text-brand-400 transition-colors flex items-center space-x-2 group"
 								>
 									<span>Demo</span>

@@ -18,7 +18,6 @@ export function Header() {
 	const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 	const [activeId, setActiveId] = useState<string>("");
 
-	// Observe section in view for active highlight
 	useEffect(() => {
 		const ids = NAV_ITEMS.map((n) => n.href.replace("#", ""));
 		const els = ids
@@ -94,7 +93,7 @@ export function Header() {
 							GitHub
 						</a>
 						<a
-							href="https://docker-react-g40o.onrender.com"
+							href="/demo"
 							className="px-4 py-2 rounded-lg font-semibold bg-brand-700 text-white hover:bg-brand-800 focus:ring-4 focus:ring-brand-600 transition-colors"
 						>
 							Open live demo
@@ -141,7 +140,7 @@ export function Header() {
 									GitHub
 								</a>
 								<a
-									href="https://docker-react-g40o.onrender.com"
+									href="/demo"
 									className="text-center px-3 py-2 rounded-lg font-semibold bg-brand-700 text-white hover:bg-brand-800 focus:ring-4 focus:ring-brand-600 transition-colors"
 									onClick={() => setMobileMenuOpen(false)}
 								>

@@ -312,7 +312,9 @@ export function SignPlayerMediapipe() {
 									</div>
 									<div style={{ color: "var(--color-ink)" }}>
 										<strong>Confidence</strong>:{" "}
-										{confidence !== null ? confidence.toFixed(4) : "-"}
+										{typeof confidence === "number"
+											? confidence.toFixed(4)
+											: "-"}
 									</div>
 								</div>
 							)}

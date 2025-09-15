@@ -14,12 +14,6 @@ export default defineConfig({
 		resolve: {
 			alias: {
 				"~/": path.join(process.cwd(), "src/"),
-				// "@tensorflow/tfjs-backend-webgl": require.resolve(
-				// 	"@tensorflow/tfjs-backend-webgl/dist/tf-backend-webgl.esm.js"
-				// ),
-				// "@tensorflow/tfjs-layers": require.resolve(
-				// 	"@tensorflow/tfjs-layers/dist/tf-layers.esm.js"
-				// ),
 			},
 		},
 		define: {

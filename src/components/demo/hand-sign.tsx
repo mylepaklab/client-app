@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import Webcam from "react-webcam";
 import { FilesetResolver, HandLandmarker } from "@mediapipe/tasks-vision";
-
 import { api } from "~/lib/axios";
 
 type FrameRow = {
@@ -24,13 +23,50 @@ const PHRASES = [
 	{ key: "berapa tinggi", label: "berapa tinggi" },
 ];
 
-export function SignPlayerMediapipe() {
+class OneEuro {
+	private x = 0;
+	private dx = 0;
+	private first = true;
+	constructor(private minCut = 1.0, private beta = 0.02, private dCut = 1.0) {}
+	private alpha(cut: number, dt: number) {
+		const tau = 1.0 / (2.0 * Math.PI * cut);
+		return 1.0 / (1.0 + tau / dt);
+	}
+	update(v: number, dt: number) {
+		if (this.first) {
+			this.first = false;
+			this.x = v;
+			return v;
+		}
+		const aD = this.alpha(this.dCut, dt);
+		const dv = (v - this.x) / Math.max(dt, 1e-6);
+		this.dx = aD * dv + (1 - aD) * this.dx;
+		const cut = this.minCut + this.beta * Math.abs(this.dx);
+		const a = this.alpha(cut, dt);
+		this.x = a * v + (1 - a) * this.x;
+		return this.x;
+	}
+}
+
+export function HandSignPlayer() {
 	const webcamRef = useRef<Webcam>(null);
 	const overlayRef = useRef<HTMLCanvasElement | null>(null);
 	const playerRef = useRef<HTMLCanvasElement | null>(null);
 
 	const modelRef = useRef<HandLandmarker | null>(null);
 	const rafRef = useRef<number | null>(null);
+
+	const filtersRef = useRef({
+		left: Array.from({ length: 21 }, () => ({
+			x: new OneEuro(),
+			y: new OneEuro(),
+		})),
+		right: Array.from({ length: 21 }, () => ({
+			x: new OneEuro(),
+			y: new OneEuro(),
+		})),
+	});
+	const lastTRef = useRef(performance.now());
 
 	const [selectedPhrase, setSelectedPhrase] = useState<string>(PHRASES[0].key);
 	const [matched, setMatched] = useState<string | null>(null);
@@ -77,25 +113,85 @@ export function SignPlayerMediapipe() {
 				return;
 			}
 
-			const w = video.videoWidth || 640;
-			const h = video.videoHeight || 480;
-			if (canvas.width !== w) canvas.width = w;
-			if (canvas.height !== h) canvas.height = h;
+			const rect = video.getBoundingClientRect();
+			const dw = rect.width;
+			const dh = rect.height;
+
+			canvas.style.width = `${dw}px`;
+			canvas.style.height = `${dh}px`;
+
+			const dpr = window.devicePixelRatio || 1;
+			const bw = Math.round(dw * dpr);
+			const bh = Math.round(dh * dpr);
+			if (canvas.width !== bw || canvas.height !== bh) {
+				canvas.width = bw;
+				canvas.height = bh;
+			}
+
 			const ctx = canvas.getContext("2d")!;
-			ctx.clearRect(0, 0, w, h);
+			ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+			ctx.clearRect(0, 0, dw, dh);
 
 			const now = performance.now();
+			const dt = Math.max((now - lastTRef.current) / 1000, 1 / 120);
+			lastTRef.current = now;
+
 			const out = model.detectForVideo(video, now);
 			const hands = out.landmarks || [];
 			const handed = out.handedness || [];
 
 			for (let i = 0; i < hands.length; i++) {
 				const pts = hands[i];
-				const label = handed[i]?.[0]?.categoryName?.toLowerCase() || "right";
-				ctx.fillStyle = label === "left" ? "#2b6cb0" : "#c53030";
-				for (const p of pts) {
+
+				const label =
+					handed[i]?.[0]?.categoryName?.toLowerCase() === "left"
+						? "left"
+						: "right";
+				const bank = filtersRef.current[label as "left" | "right"];
+				const smoothed = pts.map((p, idx) => ({
+					x: bank[idx].x.update(p.x, dt),
+					y: bank[idx].y.update(p.y, dt),
+				}));
+
+				const color = label === "left" ? "#2b6cb0" : "#c53030";
+				const bones = [
+					[0, 1],
+					[1, 2],
+					[2, 3],
+					[3, 4],
+					[0, 5],
+					[5, 6],
+					[6, 7],
+					[7, 8],
+					[0, 9],
+					[9, 10],
+					[10, 11],
+					[11, 12],
+					[0, 13],
+					[13, 14],
+					[14, 15],
+					[15, 16],
+					[0, 17],
+					[17, 18],
+					[18, 19],
+					[19, 20],
+				] as const;
+
+				ctx.lineWidth = 2;
+				ctx.strokeStyle = color;
+				for (const [a, b] of bones) {
+					const p = smoothed[a],
+						q = smoothed[b];
 					ctx.beginPath();
-					ctx.arc(p.x * w, p.y * h, 3, 0, Math.PI * 2);
+					ctx.moveTo(p.x * dw, p.y * dh);
+					ctx.lineTo(q.x * dw, q.y * dh);
+					ctx.stroke();
+				}
+
+				ctx.fillStyle = color;
+				for (const p of smoothed) {
+					ctx.beginPath();
+					ctx.arc(p.x * dw, p.y * dh, 3, 0, Math.PI * 2);
 					ctx.fill();
 				}
 			}
@@ -201,8 +297,7 @@ export function SignPlayerMediapipe() {
 		for (let i = 0; i < frames.length; i++) {
 			ctx.clearRect(0, 0, W, H);
 			drawRow(ctx, frames[i]);
-
-			await new Promise((r) => setTimeout(r, 66)); // about 15 fps
+			await new Promise((r) => setTimeout(r, 66));
 		}
 	}
 
@@ -221,7 +316,6 @@ export function SignPlayerMediapipe() {
 				>
 					Handpose live overlay and phrase player
 				</h1>
-
 				<div className="grid md:grid-cols-2 gap-6">
 					<div className="relative">
 						<Webcam
@@ -232,7 +326,7 @@ export function SignPlayerMediapipe() {
 								width: 640,
 								height: 480,
 								borderColor: "var(--color-brand-300)",
-								transform: "scaleX(-1)",
+								transform: "scaleX(-1)", // mirror video
 							}}
 						/>
 						<canvas
@@ -240,10 +334,9 @@ export function SignPlayerMediapipe() {
 							width={640}
 							height={480}
 							className="absolute top-0 left-0 rounded-lg pointer-events-none"
-							style={{ width: 640, height: 480, transform: "scaleX(-1)" }}
+							style={{ width: 640, height: 480, transform: "scaleX(-1)" }} // mirror canvas same way
 						/>
 					</div>
-
 					<div className="flex flex-col gap-4">
 						<div
 							className="p-4 rounded border"
@@ -255,7 +348,6 @@ export function SignPlayerMediapipe() {
 							<div className="mb-3" style={{ color: "var(--color-ink)" }}>
 								Choose a supported phrase, then play the animation
 							</div>
-
 							<div className="flex flex-wrap gap-2 mb-3">
 								{PHRASES.map((p) => (
 									<button
@@ -275,7 +367,6 @@ export function SignPlayerMediapipe() {
 									</button>
 								))}
 							</div>
-
 							<button
 								onClick={() => matchAndPlay(selectedPhrase)}
 								disabled={loading || playing}
@@ -284,7 +375,6 @@ export function SignPlayerMediapipe() {
 							>
 								{loading ? "Loading..." : "Match and play"}
 							</button>
-
 							{error && (
 								<div
 									className="mt-3 p-3 rounded border"
@@ -297,7 +387,6 @@ export function SignPlayerMediapipe() {
 									<strong>Error:</strong> {error}
 								</div>
 							)}
-
 							{(matched !== null || confidence !== null) && (
 								<div
 									className="mt-3 p-3 rounded border"
@@ -318,7 +407,6 @@ export function SignPlayerMediapipe() {
 								</div>
 							)}
 						</div>
-
 						<div className="relative">
 							<canvas
 								ref={playerRef}

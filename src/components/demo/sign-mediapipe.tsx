@@ -67,7 +67,6 @@ export function SignPlayerMediapipe() {
 		};
 	}, []);
 
-	// Live overlay loop, draw landmarks only
 	useEffect(() => {
 		const loop = () => {
 			const model = modelRef.current;

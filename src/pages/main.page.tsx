@@ -1,6 +1,7 @@
 import { Header } from "~/components/home/Header";
 import { Footer } from "~/components/home/Footer";
 import { HeroSection } from "~/components/home/hero-section";
+import { BimIntroSection } from "~/components/home/bim-intro-section";
 import { ProblemSection } from "~/components/home/problem-section";
 import { HowItWorksSection } from "~/components/home/how-it-works-section";
 import { ProgrammeFitSection } from "~/components/home/programme-fit-section";
@@ -20,6 +21,11 @@ export function Page() {
 
 			<main className="pt-16">
 				<HeroSection fadeInUp={fadeInUp} staggerContainer={staggerContainer} />
+
+				<BimIntroSection
+					fadeInUp={fadeInUp}
+					staggerContainer={staggerContainer}
+				/>
 
 				<ProblemSection
 					fadeInUp={fadeInUp}

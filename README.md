@@ -1,46 +1,61 @@
 # BIMTranslator
 
-**BIMTranslator** is an AI-powered web app built for the Pan SEA AI Developer Challenge, The goal is simple: reduce communication barriers by translating Malay Sign Language.
+**BIMTranslator** is an AI-powered web application built for the Pan-SEA AI Developer Challenge 2025. Our goal is to bridge the communication gap by enabling real-time translation of BIM (Bahasa Isyarat Malaysia - Malaysian Sign Language) gestures into text, making digital services accessible to the Malaysian deaf community.
 
 ## What Judges Can Try
 
-- **Live demo:** [/demo](/demo)
+- **Live demo:** [/demo](/demo) - Real-time hand tracking and gesture recognition
+- **Interactive landing page:** Complete information about BIM and our solution
 - **Two minute video:** [https://www.youtube.com/watch?v=J_8QQJmwkWA](https://www.youtube.com/watch?v=J_8QQJmwkWA)
 
 **API sample:**
 
 ```bash
-curl -X POST https://your-api.example.com/api/translate \
-    -H "Content-Type: application/json" \
-    -d '{"text":"Halo, apa kabar","source":"id","target":"en"}'
+curl -X GET "https://your-api.example.com/match_animation_sequence?sentence=apa%20nama" \
+    -H "Accept: application/json"
 ```
 
 ## Features
 
-- **Malay Sign Language assistance:** Text to sign or sign to text, depending on device
-- **Browser-first processing:** Work happens in the page when possible, server fallback only when needed
-- **Simple UI:** Clear layout with large controls
-- **Privacy:** Demo does not store media; short error logs only, cleared often
+- **Real-time BIM gesture recognition:** Live webcam capture with MediaPipe hand tracking
+- **21-point hand landmark detection:** Precise tracking of both hands with smoothing filters
+- **Instant gesture translation:** Convert BIM gestures to clear text output
+- **Interactive phrase matching:** Support for common Malaysian sign language expressions
+- **Visual feedback system:** Animated playback of gesture sequences with confidence scoring
+- **Privacy-first design:** All processing happens in the browser, no video data stored
+- **Responsive web interface:** Works on desktop and mobile devices
 
 ## How It Works
 
-1. Capture input in the browser (camera or text)
-2. Run a small model in the client when possible, use the API when required
-3. Return a clean output with confidence scores
+1. **Capture:** Use your webcam to capture hand movements in real-time
+2. **Track:** MediaPipe extracts 21 landmarks per hand with smoothing filters for accuracy
+3. **Recognize:** TensorFlow.js model classifies BIM gestures with confidence scoring
+4. **Translate:** Convert recognized gestures to text and provide visual feedback through animation playback
+
+## Technology Stack
+
+- **Frontend:** React 18 with TypeScript
+- **Build Tool:** Farm (Vite-compatible bundler)
+- **Hand Tracking:** MediaPipe Tasks Vision
+- **Machine Learning:** TensorFlow.js with custom gesture recognition model
+- **Styling:** Tailwind CSS with custom brand theming
+- **Animation:** Framer Motion for smooth interactions
+- **Routing:** React Router for navigation
 
 ## Getting Started
 
 ### Prerequisites
 
 - Node.js version 18 or newer
-- pnpm, npm, or yarn
+- pnpm (recommended), npm, or yarn
+- Modern browser with WebRTC support for camera access
 
 ### Installation
 
 Clone the repository:
 
 ```bash
-git clone https://github.com/mylepaklab/bim-translator.git
+git clone https://github.com/TraFost/bim-translator.git
 cd bim-translator
 ```
 
@@ -62,36 +77,95 @@ npm run dev
 
 Open your browser and go to [http://localhost:3000](http://localhost:3000) to see BIMTranslator.
 
+### Available Scripts
+
+- `pnpm dev` - Start development server
+- `pnpm build` - Build for production
+- `pnpm preview` - Preview production build
+- `pnpm clean` - Clear persistent cache files
+
 ## Project Structure
 
 ```
-├── public/           # Static assets such as images and models
+├── public/           # Static assets
+│   ├── models/       # TensorFlow.js gesture recognition models
+│   └── assets/       # Images and other static files
 ├── src/              # Source code
 │   ├── components/   # React components
+│   │   ├── demo/     # Hand sign recognition demo
+│   │   └── home/     # Landing page components
 │   ├── configs/      # Configuration files
 │   ├── constants/    # App constants and content
 │   ├── hooks/        # Custom React hooks
-│   ├── lib/          # Utility libraries
-│   ├── pages/        # App pages
-│   └── types/        # TypeScript types
-├── Dockerfile        # Container setup
-├── docker-compose.yml# Multi container orchestration
-├── cloudbuild.yaml   # Cloud build config
-├── package.json      # Project metadata and scripts
+│   ├── lib/          # Utility libraries (axios, utils)
+│   ├── pages/        # App pages (main, demo)
+│   └── types/        # TypeScript type definitions
+├── farm.config.ts    # Farm bundler configuration
+├── package.json      # Project metadata and dependencies
 └── README.md         # This file
 ```
 
 ## For Judges and Reviewers
 
-- **Impact:** Faster access for deaf and hard of hearing users; less waiting; better inclusion in class and clinics
-- **Feasibility:** Client model about 5 MB; median latency under one second in simple tests; SEA region API fallback about two hundred milliseconds
-- **Innovation:** Client-first flow reduces cost and protects privacy; optional glossary keeps meaning for domain terms
-- **Privacy and safety:** Local first; no permanent media in the demo; request filters for harmful content
-- **User experience:** One click start; readable text; keyboard focus visible
+### Impact for SEA Region
+
+- **Removes communication barriers** for deaf and hard of hearing users in Malaysia
+- **Supports BIM users** in accessing digital services and AI assistants
+- **Reduces dependency** on human interpreters for basic digital interactions
+- **Empowers independence** in the deaf community through direct AI communication
+
+### Technical Innovation
+
+- **Real-time hand tracking** with 21-point precision per hand using MediaPipe
+- **Client-side processing** for privacy and performance
+- **Custom gesture recognition model** trained for BIM gestures
+- **Smooth filtering algorithms** for stable landmark detection
+- **Interactive visual feedback** system with confidence scoring
+
+### Feasibility and Performance
+
+- **Live demo available** with real-time gesture recognition
+- **Browser-based solution** requiring no downloads or installations
+- **Responsive design** working on desktop and mobile devices
+- **Privacy-first approach** with no video data storage
+
+### User Experience
+
+- **One-click access** to live demo
+- **Intuitive interface** designed for accessibility
+- **Real-time visual feedback** with color-coded hand tracking
+- **Clear navigation** between landing page and demo
 
 ## Usage
 
-- **Demo:** [/demo](/demo)
+### Demo Access
+
+Visit [/demo](/demo) to try the live gesture recognition demo:
+
+1. **Allow camera access** when prompted
+2. **Position your hands** in view of the webcam
+3. **Make BIM gestures** and see real-time hand tracking
+4. **Select phrases** to match and see animation playback
+5. **View confidence scores** for gesture recognition accuracy
+
+### Supported Features
+
+- Real-time hand landmark detection with visual overlay
+- Gesture recognition with confidence scoring
+- Phrase matching for common BIM expressions
+- Interactive animation playback system
+- Support for both left and right hand tracking
+
+## What is BIM?
+
+**BIM (Bahasa Isyarat Malaysia)** is the official sign language of Malaysia, used by the deaf and hard of hearing community. It's a rich visual language that uses:
+
+- **Hand shapes and movements** to convey meaning
+- **Facial expressions** for grammatical structure
+- **Spatial relationships** for complex concepts
+- **Cultural context** specific to Malaysian deaf community
+
+BIMTranslator bridges the gap between this visual language and digital text-based systems.
 
 ## Legal
 
@@ -100,12 +174,13 @@ Open your browser and go to [http://localhost:3000](http://localhost:3000) to se
 
 ## Contact
 
-- **Email:** mylepaklab@gmail.com
-- **GitHub:** [MyLepakLab](https://github.com/mylepaklab)
+- **Team:** TraFost
+- **GitHub:** [TraFost/bim-translator](https://github.com/TraFost/bim-translator)
+- **Challenge:** Pan-SEA AI Developer Challenge 2025
 
 ## License and Use
 
-This project is for hackathon evaluation. All rights reserved. Contact the team for reuse outside the challenge.
+This project is developed for the Pan-SEA AI Developer Challenge 2025. All rights reserved. Please contact the team for any reuse outside the challenge context.
 
 ---
 

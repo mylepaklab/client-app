@@ -32,19 +32,19 @@ export function HeroSection({ fadeInUp, staggerContainer }: HeroSectionProps) {
 						className="text-5xl md:text-7xl font-bold text-charcoal mb-8 leading-tight tracking-tight"
 						variants={fadeInUp}
 					>
-						Translate{" "}
+						Capture{" "}
 						<span className="bg-gradient-to-r from-brand-600 to-brand-700 bg-clip-text text-transparent">
-							BIM
+							BIM gestures
 						</span>{" "}
-						to chat with AI
+						and get instant translation
 					</motion.h1>
 
 					<motion.p
 						className="text-xl md:text-2xl text-ink mb-12 max-w-4xl mx-auto leading-relaxed"
 						variants={fadeInUp}
 					>
-						Ask with your hands, the avatar mirrors your signs, the assistant
-						replies in clear text and can sign key parts for clarity.
+						Use your webcam to capture BIM gestures, get real-time hand tracking
+						with MediaPipe, and receive accurate text translations instantly.
 					</motion.p>
 
 					<motion.div
@@ -58,13 +58,12 @@ export function HeroSection({ fadeInUp, staggerContainer }: HeroSectionProps) {
 							whileTap={{ scale: 0.98 }}
 						>
 							<Play className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
-							<span>Start Interacting</span>
+							<span>Try BIM Translation</span>
 						</motion.a>
 					</motion.div>
 
 					<motion.p className="text-brand-600 font-medium" variants={fadeInUp}>
-						No login required • Privacy first design • Built for Deaf
-						communities
+						No login required • Privacy first design • Built for BIM users
 					</motion.p>
 				</motion.div>
 			</div>

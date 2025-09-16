@@ -21,36 +21,31 @@ export function Page() {
 
 			<main className="pt-16">
 				<HeroSection fadeInUp={fadeInUp} staggerContainer={staggerContainer} />
-
 				<BimIntroSection
 					fadeInUp={fadeInUp}
 					staggerContainer={staggerContainer}
 				/>
-
 				<ProblemSection
 					fadeInUp={fadeInUp}
 					staggerContainer={staggerContainer}
 				/>
-
 				<ImpactSection fadeInUp={fadeInUp} />
-
 				<HowItWorksSection
 					fadeInUp={fadeInUp}
 					staggerContainer={staggerContainer}
 				/>
-
 				<ProgrammeFitSection
 					fadeInUp={fadeInUp}
 					staggerContainer={staggerContainer}
 				/>
-
 				<EvidenceSection
 					fadeInUp={fadeInUp}
 					staggerContainer={staggerContainer}
 				/>
-
-				<OurTeamSection />
-
+				<OurTeamSection
+					fadeInUp={fadeInUp}
+					staggerContainer={staggerContainer}
+				/>
 				<FaqSection fadeInUp={fadeInUp} staggerContainer={staggerContainer} />
 			</main>
 

@@ -69,14 +69,15 @@ export function ProblemSection({
 								<li className="flex items-start gap-3">
 									<span className="mt-2 w-2 h-2 rounded-full bg-brand-800"></span>
 									<span className="text-ink">
-										Classifies gestures with a Scikit Learn model.
+										Classifies gestures with a trained model for accurate
+										recognition.
 									</span>
 								</li>
 								<li className="flex items-start gap-3">
 									<span className="mt-2 w-2 h-2 rounded-full bg-brand-800"></span>
 									<span className="text-ink">
-										Sends intent to SEA LION, returns clear text, animates an
-										avatar for feedback.
+										Translates to clear text and provides visual feedback
+										through animation playback.
 									</span>
 								</li>
 							</ul>

@@ -2,27 +2,27 @@ export const faqItems = [
 	{
 		question: "What languages are supported?",
 		answer:
-			"Currently, we support Malay, and we are working on adding more languages soon.",
+			"Currently, we support BIM (Bahasa Isyarat Malaysia) and we are working on adding more sign languages soon.",
 	},
 	{
 		question: "How accurate is the translation?",
 		answer:
-			"Our model achieves 95% accuracy on common BIM gestures. We continuously train on new data to improve recognition.",
+			"Our model achieves high accuracy on common BIM gestures. We continuously train on new data to improve recognition and expand vocabulary.",
 	},
 	{
 		question: "What devices and browsers work?",
 		answer:
-			"It works on modern browsers with WebRTC support: Chrome, Firefox, Safari, and Edge. Camera access is required for gesture capture.",
+			"Works on modern browsers with WebRTC support: Chrome, Firefox, Safari, and Edge. Camera access is required for gesture capture. Best performance on desktop/laptop.",
 	},
 	{
 		question: "How do you handle my data?",
 		answer:
-			"Your webcam feed stays in your browser. No video is stored or transmitted. Only gesture landmarks are processed securely.",
+			"Your webcam feed stays in your browser. No video is stored or transmitted. Only gesture landmarks are processed, and translation happens securely.",
 	},
 	{
-		question: "Will this work offline?",
+		question: "Can I use this offline?",
 		answer:
-			"Currently, an internet connection is required for AI translation. We are working on offline gesture recognition for future releases.",
+			"Hand tracking works offline once loaded, but translation requires an internet connection for our AI. We're working on expanding offline capabilities.",
 	},
 ] as const;
 
@@ -36,14 +36,14 @@ export const howItWorksSteps = [
 	},
 	{
 		title: "Recognize",
-		description: "Scikit Learn classifier",
+		description: "TensorFlow model classifies BIM gestures",
 		icon: "Brain",
 		bgColor: "bg-purple-100 dark:bg-purple-900/20",
 		iconColor: "text-purple-600 dark:text-purple-400",
 	},
 	{
 		title: "Translate",
-		description: "SEA LION output with avatar animation",
+		description: "Convert to text and provide visual feedback",
 		icon: "Monitor",
 		bgColor: "bg-green-100 dark:bg-green-900/20",
 		iconColor: "text-green-600 dark:text-green-400",
@@ -57,8 +57,8 @@ export const metricsData = [
 		delta: 5,
 	},
 	{ label: "Average response time", value: "< 200ms", delta: 30 },
-	{ label: "Supported gestures", value: "4", delta: 10 },
-	{ label: "Frame rate", value: "50 FPS", delta: 0 },
+	{ label: "Supported gestures", value: "Multiple", delta: 10 },
+	{ label: "Frame rate", value: "60 FPS", delta: 0 },
 ] as const;
 
 export const programmeFitAreas = [
@@ -68,9 +68,9 @@ export const programmeFitAreas = [
 		percentage: "30%",
 		points: [
 			"Removes communication barriers for deaf and hard of hearing users",
-			"Supports local language pairs such as Malay, but we are working on adding more languages soon.",
-			"Cuts waiting time for human relays, making deaf communities more independent",
-			"Empowers users to communicate without intermediaries",
+			"Supports BIM (Bahasa Isyarat Malaysia) users in accessing digital services",
+			"Cuts waiting time for human interpreters, making deaf communities more independent",
+			"Empowers users to communicate with AI assistants and online services",
 		],
 	},
 	{
@@ -78,7 +78,7 @@ export const programmeFitAreas = [
 		icon: "Rocket",
 		percentage: "30%",
 		points: [
-			"Live site and API that judges can try now",
+			"Live demo with real-time BIM translation that judges can try now",
 			"Client model loads fast, server fallback when needed",
 			"Median latency under one second in simple tests",
 			"Clear limits and graceful failure states",
@@ -89,9 +89,9 @@ export const programmeFitAreas = [
 		icon: "Sparkles",
 		percentage: "15%",
 		points: [
-			"Real time hand or text input to clean output in the browser",
-			"Custom glossary for domain terms to keep meaning",
-			"Client first approach reduces cost and improves privacy",
+			"Real-time hand gesture input to clean text output in the browser",
+			"Custom trained model for BIM gesture recognition",
+			"Client-first approach reduces cost and improves privacy",
 		],
 	},
 	{
@@ -99,9 +99,9 @@ export const programmeFitAreas = [
 		icon: "Cpu",
 		percentage: "15%",
 		points: [
-			"Client model runs in the browser",
-			"Model runs in the browser",
-			"Queue and logging only for errors, simple and safe",
+			"Hand tracking runs entirely in the browser using MediaPipe",
+			"TensorFlow.js model for gesture recognition",
+			"Smooth filtering algorithms for stable hand landmark detection",
 		],
 	},
 	{
@@ -109,9 +109,9 @@ export const programmeFitAreas = [
 		icon: "Shield",
 		percentage: "5%",
 		points: [
-			"Consent copy in place and clear privacy note on page",
-			"No permanent storage of media in the demo",
-			"Request filtering to limit harmful content",
+			"No video data stored or transmitted - only landmark coordinates processed",
+			"Webcam feed remains local in the user's browser",
+			"Privacy-first approach with minimal data collection",
 		],
 	},
 	{
@@ -119,9 +119,9 @@ export const programmeFitAreas = [
 		icon: "Smile",
 		percentage: "5%",
 		points: [
-			"One click start, no account needed for the demo",
-			"Short video explains the flow, embedded on the site",
-			"Clean layout with large buttons and readable text",
+			"One-click start with immediate webcam access",
+			"Real-time visual feedback with gesture recognition",
+			"Intuitive interface for BIM users",
 		],
 	},
 ] as const;
@@ -170,14 +170,10 @@ export const architectureItems = [
 	},
 	{
 		component: "Classifier",
-		description: "Scikit Learn model served by the API",
+		description: "TensorFlow model for gesture recognition",
 	},
 	{
-		component: "LLM",
-		description: "SEA LION call for clean text",
-	},
-	{
-		component: "Avatar",
-		description: "animation synced with output tokens",
+		component: "Translation",
+		description: "Convert gestures to text with visual feedback",
 	},
 ] as const;

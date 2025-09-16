@@ -50,44 +50,6 @@ export function Footer() {
 									</span>
 								</a>
 							</li>
-							<li>
-								<a
-									href="/docs"
-									className="hover:text-brand-400 transition-colors flex items-center space-x-2 group"
-								>
-									<span>Documentation</span>
-									<span className="opacity-0 group-hover:opacity-100 transition-opacity">
-										→
-									</span>
-								</a>
-							</li>
-						</ul>
-					</div>
-					<div>
-						<h3 className="font-bold mb-6 text-lg">Legal</h3>
-						<ul className="space-y-3 text-gray-300">
-							<li>
-								<a
-									href="/privacy"
-									className="hover:text-brand-400 transition-colors flex items-center space-x-2 group"
-								>
-									<span>Privacy Policy</span>
-									<span className="opacity-0 group-hover:opacity-100 transition-opacity">
-										→
-									</span>
-								</a>
-							</li>
-							<li>
-								<a
-									href="/terms"
-									className="hover:text-brand-400 transition-colors flex items-center space-x-2 group"
-								>
-									<span>Terms of Service</span>
-									<span className="opacity-0 group-hover:opacity-100 transition-opacity">
-										→
-									</span>
-								</a>
-							</li>
 						</ul>
 					</div>
 				</div>

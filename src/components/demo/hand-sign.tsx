@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import Webcam from "react-webcam";
-import { FilesetResolver, HandLandmarker } from "@mediapipe/tasks-vision";
+import * as tf from "@tensorflow/tfjs";
 import { api } from "~/lib/axios";
 
 type FrameRow = {
@@ -18,55 +18,18 @@ type MatchResp = {
 };
 
 const PHRASES = [
-	{ key: "apa nama", label: "apa nama" },
-	{ key: "pekerjaan apa", label: "pekerjaan apa" },
-	{ key: "berapa tinggi", label: "berapa tinggi" },
+	{ key: "apa nama", label: "Apa nama" },
+	{ key: "pekerjaan apa", label: "Pekerjaan apa" },
+	{ key: "berapa tinggi", label: "Berapa tinggi" },
 ];
 
-class OneEuro {
-	private x = 0;
-	private dx = 0;
-	private first = true;
-	constructor(private minCut = 1.0, private beta = 0.02, private dCut = 1.0) {}
-	private alpha(cut: number, dt: number) {
-		const tau = 1.0 / (2.0 * Math.PI * cut);
-		return 1.0 / (1.0 + tau / dt);
-	}
-	update(v: number, dt: number) {
-		if (this.first) {
-			this.first = false;
-			this.x = v;
-			return v;
-		}
-		const aD = this.alpha(this.dCut, dt);
-		const dv = (v - this.x) / Math.max(dt, 1e-6);
-		this.dx = aD * dv + (1 - aD) * this.dx;
-		const cut = this.minCut + this.beta * Math.abs(this.dx);
-		const a = this.alpha(cut, dt);
-		this.x = a * v + (1 - a) * this.x;
-		return this.x;
-	}
-}
+const MODEL_URL = "/models/tfjs-model/model.json";
+const LABELS_URL = "/models/tfjs-model/label_mapping.json";
+const PREDICT_MS = 1000;
 
 export function HandSignPlayer() {
 	const webcamRef = useRef<Webcam>(null);
-	const overlayRef = useRef<HTMLCanvasElement | null>(null);
 	const playerRef = useRef<HTMLCanvasElement | null>(null);
-
-	const modelRef = useRef<HandLandmarker | null>(null);
-	const rafRef = useRef<number | null>(null);
-
-	const filtersRef = useRef({
-		left: Array.from({ length: 21 }, () => ({
-			x: new OneEuro(),
-			y: new OneEuro(),
-		})),
-		right: Array.from({ length: 21 }, () => ({
-			x: new OneEuro(),
-			y: new OneEuro(),
-		})),
-	});
-	const lastTRef = useRef(performance.now());
 
 	const [selectedPhrase, setSelectedPhrase] = useState<string>(PHRASES[0].key);
 	const [matched, setMatched] = useState<string | null>(null);
@@ -75,135 +38,125 @@ export function HandSignPlayer() {
 	const [playing, setPlaying] = useState(false);
 	const [error, setError] = useState("");
 
+	const [model, setModel] = useState<tf.LayersModel | null>(null);
+	const [labelMap, setLabelMap] = useState<Record<number, string>>({});
+	const [prediction, setPrediction] = useState<{
+		index: number;
+		name: string;
+		prob: number;
+	} | null>(null);
+
+	const [buffer, setBuffer] = useState<string>("");
+
+	const stableRef = useRef<{ idx: number | null; ticks: number }>({
+		idx: null,
+		ticks: 0,
+	});
+
 	useEffect(() => {
-		let cancelled = false;
-		async function init() {
+		let mounted = true;
+		(async () => {
 			try {
-				const vision = await FilesetResolver.forVisionTasks(
-					"https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm"
-				);
-				if (cancelled) return;
-				modelRef.current = await HandLandmarker.createFromOptions(vision, {
-					baseOptions: {
-						modelAssetPath:
-							"https://storage.googleapis.com/mediapipe-assets/hand_landmarker.task",
+				await tf.setBackend("webgl");
+				await tf.ready();
+				const m = await tf.loadLayersModel(MODEL_URL);
+				if (!mounted) return;
+				setModel(m);
+				tf.tidy(() => m.predict(tf.zeros([1, 256, 256, 3])) as tf.Tensor);
+			} catch (e) {
+				console.error("Model load failed", e);
+				setError("Failed to load TFJS model");
+			}
+		})();
+		return () => {
+			mounted = false;
+		};
+	}, []);
+
+	useEffect(() => {
+		let mounted = true;
+		(async () => {
+			try {
+				const res = await fetch(LABELS_URL);
+				const mapping = (await res.json()) as Record<string, number>;
+				const flipped = Object.entries(mapping).reduce<Record<number, string>>(
+					(acc, [label, idx]) => {
+						acc[idx] = label;
+						return acc;
 					},
-					numHands: 2,
-					runningMode: "VIDEO",
-				});
-			} catch (e: any) {
-				console.error(e);
-				setError("Failed to load MediaPipe hand model");
+					{}
+				);
+				if (mounted) setLabelMap(flipped);
+			} catch (e) {
+				console.error("Labels load failed", e);
+				setLabelMap({});
+			}
+		})();
+		return () => {
+			mounted = false;
+		};
+	}, []);
+
+	const predict = useCallback(async () => {
+		const video = webcamRef.current?.video as HTMLVideoElement | undefined;
+		if (!video || video.readyState !== 4 || !model) return;
+
+		const { output, probs } = await tf.tidy(() => {
+			const input = tf.browser
+				.fromPixels(video)
+				.resizeBilinear([256, 256])
+				.toFloat()
+				.expandDims(0);
+			const out = model.predict(input) as tf.Tensor;
+			return { output: out, probs: (out as any).softmax() };
+		});
+
+		const data = await probs.data();
+		let topIdx = -1;
+		let topVal = -Infinity;
+		let secondVal = -Infinity;
+		for (let i = 0; i < data.length; i++) {
+			const v = data[i];
+			if (v > topVal) {
+				secondVal = topVal;
+				topVal = v;
+				topIdx = i;
+			} else if (v > secondVal) {
+				secondVal = v;
 			}
 		}
-		init();
-		return () => {
-			cancelled = true;
-			if (rafRef.current) cancelAnimationFrame(rafRef.current);
-		};
-	}, []);
+
+		output.dispose();
+		if (probs !== output) probs.dispose();
+
+		const name = labelMap[topIdx] ?? `class_${topIdx}`;
+		setPrediction({ index: topIdx, name, prob: topVal });
+
+		const clearMargin = topVal - secondVal >= 0.15;
+		if (clearMargin) {
+			const last = stableRef.current.idx;
+			if (last === topIdx) {
+				stableRef.current.ticks += 1;
+			} else {
+				stableRef.current.idx = topIdx;
+				stableRef.current.ticks = 1;
+			}
+			if (stableRef.current.ticks >= 2) {
+				if (!buffer.endsWith(name) && /^[A-Z0-9]+$/.test(name)) {
+					setBuffer((b) => b + name);
+				}
+			}
+		} else {
+			stableRef.current.idx = null;
+			stableRef.current.ticks = 0;
+		}
+	}, [model, labelMap, buffer]);
 
 	useEffect(() => {
-		const loop = () => {
-			const model = modelRef.current;
-			const video = webcamRef.current?.video as HTMLVideoElement | undefined;
-			const canvas = overlayRef.current;
-			if (!model || !video || video.readyState !== 4 || !canvas) {
-				rafRef.current = requestAnimationFrame(loop);
-				return;
-			}
-
-			const rect = video.getBoundingClientRect();
-			const dw = rect.width;
-			const dh = rect.height;
-
-			canvas.style.width = `${dw}px`;
-			canvas.style.height = `${dh}px`;
-
-			const dpr = window.devicePixelRatio || 1;
-			const bw = Math.round(dw * dpr);
-			const bh = Math.round(dh * dpr);
-			if (canvas.width !== bw || canvas.height !== bh) {
-				canvas.width = bw;
-				canvas.height = bh;
-			}
-
-			const ctx = canvas.getContext("2d")!;
-			ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-			ctx.clearRect(0, 0, dw, dh);
-
-			const now = performance.now();
-			const dt = Math.max((now - lastTRef.current) / 1000, 1 / 120);
-			lastTRef.current = now;
-
-			const out = model.detectForVideo(video, now);
-			const hands = out.landmarks || [];
-			const handed = out.handedness || [];
-
-			for (let i = 0; i < hands.length; i++) {
-				const pts = hands[i];
-
-				const label =
-					handed[i]?.[0]?.categoryName?.toLowerCase() === "left"
-						? "left"
-						: "right";
-				const bank = filtersRef.current[label as "left" | "right"];
-				const smoothed = pts.map((p, idx) => ({
-					x: bank[idx].x.update(p.x, dt),
-					y: bank[idx].y.update(p.y, dt),
-				}));
-
-				const color = label === "left" ? "#2b6cb0" : "#c53030";
-				const bones = [
-					[0, 1],
-					[1, 2],
-					[2, 3],
-					[3, 4],
-					[0, 5],
-					[5, 6],
-					[6, 7],
-					[7, 8],
-					[0, 9],
-					[9, 10],
-					[10, 11],
-					[11, 12],
-					[0, 13],
-					[13, 14],
-					[14, 15],
-					[15, 16],
-					[0, 17],
-					[17, 18],
-					[18, 19],
-					[19, 20],
-				] as const;
-
-				ctx.lineWidth = 2;
-				ctx.strokeStyle = color;
-				for (const [a, b] of bones) {
-					const p = smoothed[a],
-						q = smoothed[b];
-					ctx.beginPath();
-					ctx.moveTo(p.x * dw, p.y * dh);
-					ctx.lineTo(q.x * dw, q.y * dh);
-					ctx.stroke();
-				}
-
-				ctx.fillStyle = color;
-				for (const p of smoothed) {
-					ctx.beginPath();
-					ctx.arc(p.x * dw, p.y * dh, 3, 0, Math.PI * 2);
-					ctx.fill();
-				}
-			}
-
-			rafRef.current = requestAnimationFrame(loop);
-		};
-
-		rafRef.current = requestAnimationFrame(loop);
-		return () => {
-			if (rafRef.current) cancelAnimationFrame(rafRef.current);
-		};
-	}, []);
+		if (!model) return;
+		const id = setInterval(predict, PREDICT_MS);
+		return () => clearInterval(id);
+	}, [model, predict]);
 
 	async function matchAndPlay(phrase: string) {
 		setError("");
@@ -226,8 +179,8 @@ export function HandSignPlayer() {
 
 			const canvas = playerRef.current!;
 			const ctx = canvas.getContext("2d")!;
-			const W = canvas.width;
-			const H = canvas.height;
+			const W = canvas.width,
+				H = canvas.height;
 			ctx.clearRect(0, 0, W, H);
 
 			setPlaying(true);
@@ -301,124 +254,231 @@ export function HandSignPlayer() {
 		}
 	}
 
+	const onStop = useCallback(async () => {
+		const text = buffer.trim();
+		if (!text) return;
+
+		const sendText = await api.get("/form_answer", {
+			params: { text_to_translate: `${text} STOP` },
+		});
+
+		console.log("Form answer response:", sendText.data);
+	}, [buffer]);
+
+	const onClear = useCallback(() => {
+		setBuffer("");
+		stableRef.current.idx = null;
+		stableRef.current.ticks = 0;
+	}, []);
+
 	return (
 		<div
-			className="flex flex-col items-center justify-center min-h-screen p-8"
+			className="flex flex-col items-center justify-center min-h-screen p-4 md:p-8"
 			style={{ backgroundColor: "var(--color-surface)" }}
 		>
+			<div className="w-full max-w-6xl mb-8 text-center">
+				<div className="flex flex-col items-center gap-5">
+					<img
+						src="/assets/images/bim-sign.webp"
+						alt="BIM Sign Language"
+						className="w-28 h-28 md:w-40 md:h-40 object-contain"
+					/>
+					<h1
+						className="text-3xl md:text-4xl font-bold"
+						style={{ color: "var(--color-ink)" }}
+					>
+						BIM Sign Language Translator
+					</h1>
+					<p
+						className="text-sm md:text-base max-w-3xl"
+						style={{ color: "var(--color-cocoa)" }}
+					>
+						Use hand gestures to communicate in Bahasa Isyarat Malaysia. Show a
+						sign to the camera or pick a phrase to preview its animation.
+					</p>
+				</div>
+			</div>
+
 			<div
-				className="max-w-6xl w-full rounded-lg shadow-lg p-8"
+				className="w-full max-w-6xl rounded-lg shadow-lg p-4 md:p-8"
 				style={{ backgroundColor: "var(--color-brand-50)" }}
 			>
-				<h1
-					className="text-3xl font-bold text-center mb-8"
-					style={{ color: "var(--color-ink)" }}
-				>
-					Handpose live overlay and phrase player
-				</h1>
-				<div className="grid md:grid-cols-2 gap-6">
-					<div className="relative">
+				{/* two equal columns on large, stack on small */}
+				<div className="grid lg:grid-cols-2 gap-8">
+					{/* Left column */}
+					<div className="flex flex-col items-center space-y-5">
+						<h2
+							className="text-xl font-semibold text-center"
+							style={{ color: "var(--color-ink)" }}
+						>
+							Hand Sign Detection
+						</h2>
+
 						<Webcam
 							ref={webcamRef}
-							videoConstraints={{ width: 640, height: 480, facingMode: "user" }}
-							className="rounded-lg border-2"
+							className="rounded-lg border-2 w-full max-w-md"
 							style={{
-								width: 640,
-								height: 480,
 								borderColor: "var(--color-brand-300)",
-								transform: "scaleX(-1)", // mirror video
+								aspectRatio: "1",
+							}}
+							width={256}
+							height={256}
+							mirrored
+							videoConstraints={{
+								width: 1280,
+								height: 720,
+								facingMode: "user",
 							}}
 						/>
-						<canvas
-							ref={overlayRef}
-							width={640}
-							height={480}
-							className="absolute top-0 left-0 rounded-lg pointer-events-none"
-							style={{ width: 640, height: 480, transform: "scaleX(-1)" }} // mirror canvas same way
-						/>
-					</div>
-					<div className="flex flex-col gap-4">
+
 						<div
-							className="p-4 rounded border"
+							className="text-sm text-center p-3 rounded-lg w-full max-w-md"
 							style={{
 								backgroundColor: "var(--color-brand-100)",
-								borderColor: "var(--color-brand-300)",
+								color: "var(--color-ink)",
 							}}
 						>
-							<div className="mb-3" style={{ color: "var(--color-ink)" }}>
-								Choose a supported phrase, then play the animation
+							{prediction ? (
+								<>
+									<strong>Detected:</strong> {prediction.name}
+									<br />
+									<strong>Confidence:</strong>{" "}
+									{(prediction.prob * 100).toFixed(2)}%
+								</>
+							) : (
+								<>Show your hand to get prediction</>
+							)}
+						</div>
+
+						<div className="w-full max-w-md space-y-3">
+							<div
+								className="flex items-center gap-2 p-3 rounded border bg-white"
+								style={{ borderColor: "var(--color-brand-300)" }}
+							>
+								<span
+									className="text-sm font-medium"
+									style={{ color: "var(--color-ink)" }}
+								>
+									Buffer:
+								</span>
+								<div
+									className="flex-1 font-mono text-lg"
+									style={{ color: "var(--color-cocoa)" }}
+								>
+									{buffer || "…"}
+								</div>
 							</div>
-							<div className="flex flex-wrap gap-2 mb-3">
-								{PHRASES.map((p) => (
-									<button
-										key={p.key}
-										onClick={() => setSelectedPhrase(p.key)}
-										className="px-3 py-2 rounded text-sm font-semibold"
-										style={{
-											backgroundColor:
-												selectedPhrase === p.key
-													? "var(--color-charcoal)"
-													: "var(--color-brand-200)",
-											color:
-												selectedPhrase === p.key ? "#fff" : "var(--color-ink)",
-										}}
-									>
-										{p.label}
-									</button>
-								))}
+
+							<div className="flex gap-2">
+								<button
+									onClick={onClear}
+									className="flex-1 px-4 py-2 rounded font-semibold transition-colors"
+									style={{
+										backgroundColor: "var(--color-brand-200)",
+										color: "var(--color-ink)",
+									}}
+								>
+									Clear
+								</button>
+								<button
+									onClick={onStop}
+									className="flex-1 px-4 py-2 text-white rounded font-semibold transition-colors"
+									style={{ backgroundColor: "var(--color-charcoal)" }}
+								>
+									Translate
+								</button>
 							</div>
+						</div>
+					</div>
+
+					<div className="flex flex-col items-center space-y-5">
+						<h2
+							className="text-xl font-semibold text-center"
+							style={{ color: "var(--color-ink)" }}
+						>
+							Phrase Animation Player
+						</h2>
+
+						<div className="w-full max-w-md space-y-4">
+							<div>
+								<label
+									className="block text-sm font-medium mb-2"
+									style={{ color: "var(--color-ink)" }}
+								>
+									Select a phrase:
+								</label>
+								<select
+									value={selectedPhrase}
+									onChange={(e) => setSelectedPhrase(e.target.value)}
+									className="w-full px-3 py-2 rounded border"
+									style={{
+										borderColor: "var(--color-brand-300)",
+										backgroundColor: "white",
+										color: "var(--color-ink)",
+									}}
+								>
+									{PHRASES.map((phrase) => (
+										<option key={phrase.key} value={phrase.key}>
+											{phrase.label}
+										</option>
+									))}
+								</select>
+							</div>
+
 							<button
 								onClick={() => matchAndPlay(selectedPhrase)}
 								disabled={loading || playing}
-								className="px-4 py-2 text-white rounded font-semibold"
-								style={{ backgroundColor: "var(--color-charcoal)" }}
+								className="w-full px-4 py-3 text-white rounded font-semibold transition-colors disabled:opacity-50"
+								style={{ backgroundColor: "var(--color-brand-500)" }}
 							>
-								{loading ? "Loading..." : "Match and play"}
+								{loading
+									? "Loading..."
+									: playing
+									? "Playing..."
+									: "Play Animation"}
 							</button>
-							{error && (
-								<div
-									className="mt-3 p-3 rounded border"
-									style={{
-										backgroundColor: "var(--color-brand-100)",
-										borderColor: "var(--color-brand-400)",
-										color: "var(--color-cocoa)",
-									}}
-								>
-									<strong>Error:</strong> {error}
-								</div>
-							)}
-							{(matched !== null || confidence !== null) && (
-								<div
-									className="mt-3 p-3 rounded border"
-									style={{
-										backgroundColor: "var(--color-brand-50)",
-										borderColor: "var(--color-brand-300)",
-									}}
-								>
-									<div style={{ color: "var(--color-ink)" }}>
-										<strong>Matched</strong>: {matched ?? "-"}
-									</div>
-									<div style={{ color: "var(--color-ink)" }}>
-										<strong>Confidence</strong>:{" "}
-										{typeof confidence === "number"
-											? confidence.toFixed(4)
-											: "-"}
-									</div>
-								</div>
-							)}
 						</div>
-						<div className="relative">
-							<canvas
-								ref={playerRef}
-								width={530}
-								height={480}
-								className="rounded-lg border"
+
+						<canvas
+							ref={playerRef}
+							width={256}
+							height={256}
+							className="rounded-lg border-2 w-full max-w-md"
+							style={{
+								borderColor: "var(--color-brand-300)",
+								backgroundColor: "white",
+								aspectRatio: "1",
+							}}
+						/>
+
+						{matched && (
+							<div
+								className="w-full max-w-md p-3 rounded-lg text-center"
 								style={{
-									borderColor: "var(--color-brand-300)",
-									backgroundColor: "var(--color-brand-50)",
+									backgroundColor: "var(--color-brand-100)",
+									color: "var(--color-ink)",
 								}}
-							/>
-						</div>
+							>
+								<div className="text-sm">
+									<strong>Matched:</strong> {matched}
+								</div>
+								{confidence !== null && (
+									<div className="text-sm">
+										<strong>Confidence:</strong> {(confidence * 100).toFixed(2)}
+										%
+									</div>
+								)}
+							</div>
+						)}
+
+						{error && (
+							<div
+								className="w-full max-w-md p-3 rounded-lg text-center text-red-700"
+								style={{ backgroundColor: "#fee2e2" }}
+							>
+								{error}
+							</div>
+						)}
 					</div>
 				</div>
 			</div>

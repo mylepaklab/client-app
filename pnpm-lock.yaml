@@ -23,6 +23,9 @@ importers:
       '@teachablemachine/image':
         specifier: ^0.8.5
         version: 0.8.5(@tensorflow/tfjs@4.22.0(seedrandom@3.0.5))
+      '@tensorflow/tfjs':
+        specifier: ^4.22.0
+        version: 4.22.0(seedrandom@3.0.5)
       axios:
         specifier: ^1.11.0
         version: 1.11.0(debug@4.4.1)

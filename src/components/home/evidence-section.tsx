@@ -1,11 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import {
-	evidenceTabs,
-	metricsData,
-	// pipelineTimingData,
-	// testMatrixData,
-} from "~/constants/contents/home.content";
+import { evidenceTabs, metricsData } from "~/constants/contents/home.content";
 
 interface EvidenceSectionProps {
 	fadeInUp: any;
@@ -72,76 +67,10 @@ export function EvidenceSection({
 											{m.value}
 										</div>
 										<div className="text-sm text-ink">{m.label}</div>
-
-										{/* WIP */}
-										{/* {m.delta && (
-											<div
-												className={`text-xs mt-1 ${
-													m.delta > 0 ? "text-green-700" : "text-red-700"
-												}`}
-											>
-												{m.delta > 0 ? "▲" : "▼"} {Math.abs(m.delta)}%
-											</div>
-										)} */}
 									</div>
 								))}
 							</div>
 						</motion.div>
-
-						{/* WIP */}
-						{/* <motion.div
-							className="bg-surface rounded-2xl p-8 shadow-lg mb-8"
-							variants={fadeInUp}
-						>
-							<h3 className="text-xl font-semibold text-charcoal mb-4">
-								Pipeline timing
-							</h3>
-							<div className="space-y-4">
-								{pipelineTimingData.map((step, index) => (
-									<div key={index}>
-										<div className="flex justify-between text-sm mb-1">
-											<span className="text-charcoal">{step.name}</span>
-											<span className="text-ink">{step.ms} ms</span>
-										</div>
-										<div className="h-2 w-full bg-brand-100 rounded-full overflow-hidden">
-											<div
-												className="h-full bg-brand-700"
-												style={{ width: `${Math.min(100, step.ms)}%` }}
-												aria-hidden
-											/>
-										</div>
-									</div>
-								))}
-							</div>
-						</motion.div> */}
-
-						{/* <motion.div
-							className="bg-surface rounded-2xl p-8 shadow-lg"
-							variants={fadeInUp}
-						>
-							<h3 className="text-xl font-semibold text-charcoal mb-4">
-								Test matrix
-							</h3>
-							<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
-								{testMatrixData.map((result, index) => (
-									<div
-										key={index}
-										className="p-4 rounded-xl border border-brand-200 bg-white flex items-center justify-between"
-									>
-										<span className="text-ink">{result.device}</span>
-										<span
-											className={`px-2.5 py-1 rounded-md text-xs font-semibold ${
-												result.status === "Pass"
-													? "bg-green-100 text-green-800"
-													: "bg-yellow-100 text-yellow-800"
-											}`}
-										>
-											{result.status}
-										</span>
-									</div>
-								))}
-							</div>
-						</motion.div> */}
 					</div>
 
 					<div role="tabpanel" hidden={openFaq !== 1}>
@@ -167,35 +96,59 @@ export function EvidenceSection({
 
 					<div role="tabpanel" hidden={openFaq !== 2}>
 						<motion.div
-							// className="grid md:grid-cols-2 gap-8"
 							variants={fadeInUp}
+							className="grid md:grid-cols-2 lg:grid-cols-3 gap-6"
 						>
 							<div className="bg-surface rounded-2xl p-8 shadow-lg">
 								<h3 className="text-xl font-semibold text-charcoal mb-2">
-									GitHub
-								</h3>
-								<p className="text-ink mb-4">Code, issues, and setup guide.</p>
-								<a
-									href="https://github.com/mylepaklab?tab=repositories"
-									className="text-brand-700 hover:text-brand-800 font-medium"
-								>
-									Open repo →
-								</a>
-							</div>
-							{/* <div className="bg-surface rounded-2xl p-8 shadow-lg">
-								<h3 className="text-xl font-semibold text-charcoal mb-2">
-									Pitch deck
+									Client App
 								</h3>
 								<p className="text-ink mb-4">
-									Slides for the programme judges.
+									Frontend React app with TensorFlow.js model and real-time hand
+									detection.
 								</p>
 								<a
-									href="#"
+									href="https://github.com/mylepaklab/client-app"
+									target="_blank"
+									rel="noopener noreferrer"
 									className="text-brand-700 hover:text-brand-800 font-medium"
 								>
-									View deck →
+									View repo →
 								</a>
-							</div> */}
+							</div>
+							<div className="bg-surface rounded-2xl p-8 shadow-lg">
+								<h3 className="text-xl font-semibold text-charcoal mb-2">
+									Backend API
+								</h3>
+								<p className="text-ink mb-4">
+									Server API for animation sequences and phrase matching.
+								</p>
+								<a
+									href="https://github.com/mylepaklab/backend-API"
+									target="_blank"
+									rel="noopener noreferrer"
+									className="text-brand-700 hover:text-brand-800 font-medium"
+								>
+									View repo →
+								</a>
+							</div>
+							<div className="bg-surface rounded-2xl p-8 shadow-lg">
+								<h3 className="text-xl font-semibold text-charcoal mb-2">
+									Data Collection
+								</h3>
+								<p className="text-ink mb-4">
+									MediaPipe data collection code for training the BIM gesture
+									model.
+								</p>
+								<a
+									href="https://github.com/mylepaklab/MediaPipeDataCollectionCode"
+									target="_blank"
+									rel="noopener noreferrer"
+									className="text-brand-700 hover:text-brand-800 font-medium"
+								>
+									View repo →
+								</a>
+							</div>
 						</motion.div>
 					</div>
 				</motion.div>

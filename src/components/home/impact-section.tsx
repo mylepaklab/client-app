@@ -20,8 +20,9 @@ export function ImpactSection({ fadeInUp }: ImpactFeasibilitySectionProps) {
 						Real Impact, Real Feasibility
 					</h2>
 					<p className="text-ink max-w-2xl mx-auto mb-10">
-						This project is not just a demo. It already solves a real problem
-						for people in Southeast Asia and can scale with clear steps.
+						Experience live BIM sign language translation in your browser. Our
+						demo showcases real-time hand detection and interactive learning
+						features.
 					</p>
 				</motion.div>
 
@@ -38,15 +39,13 @@ export function ImpactSection({ fadeInUp }: ImpactFeasibilitySectionProps) {
 					</div>
 					<div className="bg-white rounded-2xl p-6 shadow border text-center">
 						<Heart className="w-8 h-8 text-red-600 mx-auto mb-3" />
-						<div className="text-3xl font-bold text-charcoal">Instant</div>
-						<p className="text-sm text-ink">
-							Access for deaf & hard-of-hearing users
-						</p>
+						<div className="text-3xl font-bold text-charcoal">Live</div>
+						<p className="text-sm text-ink">Camera-based hand detection</p>
 					</div>
 					<div className="bg-white rounded-2xl p-6 shadow border text-center">
 						<Clock className="w-8 h-8 text-brand-700 mx-auto mb-3" />
-						<div className="text-3xl font-bold text-charcoal">&lt;1s</div>
-						<p className="text-sm text-ink">Median translation latency</p>
+						<div className="text-3xl font-bold text-charcoal">Real-time</div>
+						<p className="text-sm text-ink">Gesture recognition & feedback</p>
 					</div>
 				</motion.div>
 
@@ -60,16 +59,16 @@ export function ImpactSection({ fadeInUp }: ImpactFeasibilitySectionProps) {
 						</h3>
 						<ul className="text-ink space-y-3">
 							<li>
-								<Cpu className="inline w-5 h-5 text-brand-700 mr-2" /> Browser
-								model runs ~5MB, loads in &lt;1s
-							</li>
-							<li>
-								<Cpu className="inline w-5 h-5 text-brand-700 mr-2" /> Fallback
-								API latency ~200ms in SEA region
+								<Cpu className="inline w-5 h-5 text-brand-700 mr-2" /> Real-time
+								TensorFlow.js model runs in browser
 							</li>
 							<li>
 								<Cpu className="inline w-5 h-5 text-brand-700 mr-2" />{" "}
-								Privacy-first, no permanent storage
+								Interactive phrase animations for learning
+							</li>
+							<li>
+								<Cpu className="inline w-5 h-5 text-brand-700 mr-2" />{" "}
+								Privacy-focused, no video data stored
 							</li>
 						</ul>
 					</div>

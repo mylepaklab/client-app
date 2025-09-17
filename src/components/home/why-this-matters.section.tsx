@@ -9,7 +9,7 @@ interface Props {
 
 export function WhyThisMattersSection({ fadeInUp, staggerContainer }: Props) {
 	return (
-		<section id="fit" className="py-20 px-4 sm:px-6 lg:px-8">
+		<section id="why" className="py-20 px-4 sm:px-6 lg:px-8">
 			<div className="max-w-7xl mx-auto">
 				<motion.div
 					initial="initial"

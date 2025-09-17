@@ -117,9 +117,10 @@ export function BimIntroSection({
 									technology naturally.
 								</p>
 								<p className="text-ink leading-relaxed">
-									BIMTranslator closes this gap by turning BIM gestures into
-									text in real time, so deaf Malaysians can use digital services
-									naturally.
+									Our interactive demo lets you experience BIM translation
+									firsthand - show signs to your camera for real-time text
+									conversion, or select phrases to learn the corresponding BIM
+									gestures through animated demonstrations.
 								</p>
 							</div>
 							<div className="relative">

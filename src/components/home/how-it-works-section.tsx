@@ -4,7 +4,7 @@ import {
 	architectureItems,
 	highlightsData,
 } from "~/constants/contents/home.content";
-import { getIcon } from "~/lib/utils";
+import { getIcon } from "~/lib/icons";
 
 interface HowItWorksSectionProps {
 	fadeInUp: any;

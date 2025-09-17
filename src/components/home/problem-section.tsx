@@ -62,22 +62,22 @@ export function ProblemSection({
 								<li className="flex items-start gap-3">
 									<span className="mt-2 w-2 h-2 rounded-full bg-brand-800"></span>
 									<span className="text-ink">
-										Captures BIM with a webcam, extracts landmarks with
-										MediaPipe.
+										Real-time hand detection with TensorFlow.js - works directly
+										in your browser.
 									</span>
 								</li>
 								<li className="flex items-start gap-3">
 									<span className="mt-2 w-2 h-2 rounded-full bg-brand-800"></span>
 									<span className="text-ink">
-										Classifies gestures with a trained model for accurate
-										recognition.
+										Interactive learning - see BIM phrase animations and
+										practice gestures.
 									</span>
 								</li>
 								<li className="flex items-start gap-3">
 									<span className="mt-2 w-2 h-2 rounded-full bg-brand-800"></span>
 									<span className="text-ink">
-										Translates to clear text and provides visual feedback
-										through animation playback.
+										Instant text translation from hand signs with confidence
+										scoring.
 									</span>
 								</li>
 							</ul>

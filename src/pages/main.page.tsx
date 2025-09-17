@@ -4,7 +4,7 @@ import { HeroSection } from "~/components/home/hero-section";
 import { BimIntroSection } from "~/components/home/bim-intro-section";
 import { ProblemSection } from "~/components/home/problem-section";
 import { HowItWorksSection } from "~/components/home/how-it-works-section";
-import { ProgrammeFitSection } from "~/components/home/programme-fit-section";
+import { WhyThisMattersSection } from "~/components/home/why-this-matters.section";
 import { ImpactSection } from "~/components/home/impact-section";
 import { EvidenceSection } from "~/components/home/evidence-section";
 import { FaqSection } from "~/components/home/faq-section";
@@ -34,7 +34,7 @@ export function Page() {
 					fadeInUp={fadeInUp}
 					staggerContainer={staggerContainer}
 				/>
-				<ProgrammeFitSection
+				<WhyThisMattersSection
 					fadeInUp={fadeInUp}
 					staggerContainer={staggerContainer}
 				/>

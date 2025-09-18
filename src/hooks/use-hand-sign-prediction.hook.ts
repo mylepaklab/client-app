@@ -27,80 +27,87 @@ export function useHandSignPrediction(
 	const [buffer, setBuffer] = useState<string>("");
 	const [detecting, setDetecting] = useState(true);
 
-	const stableRef = useRef<{ idx: number | null; ticks: number }>({
-		idx: null,
+	const stableRef = useRef<{ lastPrediction: string | null; ticks: number }>({
+		lastPrediction: null,
 		ticks: 0,
 	});
 
 	const predict = useCallback(async () => {
-		if (!detecting) return;
-		const video = webcamRef.current?.video as HTMLVideoElement | undefined;
-		if (!video || video.readyState !== 4 || !model) return;
+		if (!detecting || !webcamRef.current || !model) return;
 
-		const { output, probs } = await tf.tidy(() => {
-			const input = tf.browser
+		const video = webcamRef.current.video;
+		if (!video || video.readyState !== 4) return;
+
+		const input = tf.tidy(() => {
+			return tf.browser
 				.fromPixels(video)
 				.resizeBilinear([256, 256])
 				.toFloat()
-				.expandDims(0);
-			const out = model.predict(input) as tf.Tensor;
-			return {
-				output: out,
-				probs: (out as any).softmax ? (out as any).softmax() : out,
-			};
+				.expandDims(0); // shape: [1, 256, 256, 3]
 		});
 
-		const data = await probs.data();
-		let topIdx = -1;
-		let topVal = -Infinity;
-		let secondVal = -Infinity;
-		for (let i = 0; i < data.length; i++) {
-			const v = data[i];
-			if (v > topVal) {
-				secondVal = topVal;
-				topVal = v;
-				topIdx = i;
-			} else if (v > secondVal) {
-				secondVal = v;
-			}
-		}
+		const output = model.predict(input) as tf.Tensor;
+		const predictionArray = await output.data();
 
-		output.dispose();
-		if (probs !== output) probs.dispose();
+		const topIndex = predictionArray.indexOf(Math.max(...predictionArray));
+		const topConfidence = predictionArray[topIndex];
 
-		const name = labelMap[topIdx] ?? `class_${topIdx}`;
-		setPrediction({ index: topIdx, name, prob: topVal });
+		const className = labelMap[topIndex] || `Class ${topIndex}`;
 
-		const clearMargin = topVal - secondVal >= 0.15;
-		if (clearMargin) {
-			const last = stableRef.current.idx;
-			if (last === topIdx) {
+		setPrediction({
+			index: topIndex,
+			name: className,
+			prob: topConfidence,
+		});
+
+		if (topConfidence > 0.7) {
+			// Only add high-confidence predictions
+			const currentPrediction = className;
+
+			if (stableRef.current.lastPrediction === currentPrediction) {
 				stableRef.current.ticks += 1;
+
+				if (stableRef.current.ticks >= 2) {
+					const bufferWords = buffer
+						.trim()
+						.split(" ")
+						.filter((w) => w.length > 0);
+					const lastWord = bufferWords[bufferWords.length - 1];
+
+					if (lastWord !== currentPrediction && currentPrediction.length > 0) {
+						setBuffer((prev) =>
+							prev ? `${prev} ${currentPrediction}` : currentPrediction
+						);
+						console.log("Added to buffer:", currentPrediction);
+					}
+					stableRef.current.ticks = 0;
+				}
 			} else {
-				stableRef.current.idx = topIdx;
+				stableRef.current.lastPrediction = currentPrediction;
 				stableRef.current.ticks = 1;
 			}
-			if (stableRef.current.ticks >= 2) {
-				if (!buffer.endsWith(name) && /^[A-Z0-9]+$/.test(name)) {
-					setBuffer((b) => b + name);
-				}
-			}
 		} else {
-			stableRef.current.idx = null;
+			stableRef.current.lastPrediction = null;
 			stableRef.current.ticks = 0;
 		}
+
+		tf.dispose([input, output]);
 	}, [model, labelMap, buffer, detecting, webcamRef]);
 
 	const clearBuffer = useCallback(() => {
 		setBuffer("");
-		stableRef.current.idx = null;
+		stableRef.current.lastPrediction = null;
 		stableRef.current.ticks = 0;
 	}, []);
 
 	useEffect(() => {
 		if (!model) return;
-		const id = setInterval(predict, PREDICT_MS);
-		return () => clearInterval(id);
+
+		const interval = setInterval(() => {
+			predict();
+		}, PREDICT_MS);
+
+		return () => clearInterval(interval);
 	}, [model, predict]);
 
 	return {

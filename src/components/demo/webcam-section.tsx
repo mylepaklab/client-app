@@ -109,13 +109,15 @@ export const WebcamSection = forwardRef<Webcam, WebcamSectionProps>(
 				</div>
 
 				<div className="p-4 flex flex-col items-center gap-4">
-					<div className="relative rounded-lg overflow-hidden border w-full max-w-md aspect-square" style={{ borderColor: "var(--color-brand-300)" }}>
-						{/* Dark background for better hand visibility */}
-						<div 
+					<div
+						className="relative rounded-lg overflow-hidden border w-full max-w-md aspect-square"
+						style={{ borderColor: "var(--color-brand-300)" }}
+					>
+						<div
 							className="absolute inset-0 z-0"
-							style={{ backgroundColor: '#1a1a1a' }}
+							style={{ backgroundColor: "#000000" }}
 						/>
-						
+
 						<Webcam
 							ref={ref}
 							className="w-full h-full object-cover relative z-10 tour-webcam"
@@ -128,37 +130,29 @@ export const WebcamSection = forwardRef<Webcam, WebcamSectionProps>(
 								facingMode: "user",
 							}}
 							style={{
-								filter: 'contrast(1.1) brightness(1.1)', // Enhance visibility
-								mixBlendMode: 'normal'
+								filter: "contrast(1.1) brightness(1.1)",
+								mixBlendMode: "normal",
 							}}
 							aria-label="Webcam preview"
 						/>
-						
-						{/* Hand positioning guide overlay */}
+
 						<div className="absolute inset-0 z-20 pointer-events-none flex items-center justify-center">
 							<div className="w-48 h-48 border-2 border-white/30 rounded-lg flex items-center justify-center">
 								<span className="text-white/60 text-xs font-medium text-center">
-									Position hand here<br/>
+									Position hand here
+									<br />
 									Fill the frame
 								</span>
 							</div>
 						</div>
-						
-						{/* Prediction overlay */}
-						{prediction && (
-							<div className="absolute top-4 left-4 z-30">
-								<div className="bg-black/80 text-white px-3 py-2 rounded-lg text-sm">
-									<span className="font-medium">{prediction.name}</span>
-									<br/>
-									<span className="text-xs opacity-75">{(prediction.prob * 100).toFixed(1)}%</span>
-								</div>
-							</div>
-						)}
-						
-						{/* Detection status indicator */}
+
 						<div className="absolute top-4 right-4 z-30">
-							<div className={`w-3 h-3 rounded-full ${detecting ? 'bg-red-500 animate-pulse' : 'bg-gray-400'}`} 
-								 title={detecting ? 'Detecting' : 'Paused'} />
+							<div
+								className={`w-3 h-3 rounded-full ${
+									detecting ? "bg-red-500 animate-pulse" : "bg-gray-400"
+								}`}
+								title={detecting ? "Detecting" : "Paused"}
+							/>
 						</div>
 					</div>
 
@@ -169,15 +163,6 @@ export const WebcamSection = forwardRef<Webcam, WebcamSectionProps>(
 					/>
 
 					<PredictionDisplay prediction={prediction} />
-					
-					{/* Usage instructions */}
-					<div className="w-full max-w-md text-xs text-center space-y-1" style={{ color: "var(--color-cocoa)" }}>
-						<p>• Position your hand within the guide box</p>
-						<p>• Use a plain, dark background behind your hand</p>
-						<p>• Ensure good lighting on your hand</p>
-						<p>• Fill a reasonable portion of the frame</p>
-						<p>• Hold steady for clear detection</p>
-					</div>
 				</div>
 			</div>
 		);

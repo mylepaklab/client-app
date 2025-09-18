@@ -32,13 +32,17 @@ export function TranslationResponseDisplay({
 	const parseTranslations = (translatedText: string): LanguageTranslation[] => {
 		const translations: LanguageTranslation[] = [];
 
+		const removeStopWords = (text: string): string => {
+			return text.replace(/\s+(Stop|STOP)\.?$/gi, "").trim();
+		};
+
 		const malayMatch = translatedText.match(
 			/Malay:\s*\n\s*(.*?)(?=\n\n|Thai:|$)/s
 		);
 		if (malayMatch) {
 			translations.push({
 				language: "Malay",
-				text: malayMatch[1].trim(),
+				text: removeStopWords(malayMatch[1].trim()),
 				flag: "🇲🇾",
 				code: "ms",
 			});
@@ -50,7 +54,7 @@ export function TranslationResponseDisplay({
 		if (thaiMatch) {
 			translations.push({
 				language: "Thai",
-				text: thaiMatch[1].trim(),
+				text: removeStopWords(thaiMatch[1].trim()),
 				flag: "🇹🇭",
 				code: "th",
 			});
@@ -60,7 +64,7 @@ export function TranslationResponseDisplay({
 		if (vietnameseMatch) {
 			translations.push({
 				language: "Vietnamese",
-				text: vietnameseMatch[1].trim(),
+				text: removeStopWords(vietnameseMatch[1].trim()),
 				flag: "🇻🇳",
 				code: "vi",
 			});
@@ -70,6 +74,13 @@ export function TranslationResponseDisplay({
 	};
 
 	const translations = response ? parseTranslations(response.translated) : [];
+
+	const cleanOriginalText = (text: string): string => {
+		return text
+			.replace(/\s+(Stop|STOP)\.?$/gi, "")
+			.replace(/\s+(Stop|STOP)\s*$/gi, "")
+			.trim();
+	};
 
 	useEffect(() => {
 		if (isVisible && translations.length > 0) {
@@ -134,7 +145,7 @@ export function TranslationResponseDisplay({
 							className="text-lg font-medium mt-1"
 							style={{ color: "var(--color-ink)" }}
 						>
-							"{response.original}"
+							"{cleanOriginalText(response.original)}"
 						</p>
 					</div>
 

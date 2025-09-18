@@ -60,31 +60,48 @@ export function useHandSignPrediction(
 			prob: topConfidence,
 		});
 
-		if (topConfidence > 0.7) {
-			// Only add high-confidence predictions
+		console.log(
+			`Prediction: ${className}, Confidence: ${(topConfidence * 100).toFixed(
+				2
+			)}%`
+		);
+
+		if (topConfidence > 0.5) {
 			const currentPrediction = className;
+			console.log(`High confidence prediction: ${currentPrediction}`);
 
 			if (stableRef.current.lastPrediction === currentPrediction) {
 				stableRef.current.ticks += 1;
+				console.log(`Stable ticks: ${stableRef.current.ticks}`);
 
 				if (stableRef.current.ticks >= 2) {
-					const bufferWords = buffer
-						.trim()
-						.split(" ")
-						.filter((w) => w.length > 0);
-					const lastWord = bufferWords[bufferWords.length - 1];
+					setBuffer((currentBuffer) => {
+						const bufferWords = currentBuffer
+							.trim()
+							.split(" ")
+							.filter((w) => w.length > 0);
+						const lastWord = bufferWords[bufferWords.length - 1];
 
-					if (lastWord !== currentPrediction && currentPrediction.length > 0) {
-						setBuffer((prev) =>
-							prev ? `${prev} ${currentPrediction}` : currentPrediction
-						);
-						console.log("Added to buffer:", currentPrediction);
-					}
+						if (
+							lastWord !== currentPrediction &&
+							currentPrediction.length > 0
+						) {
+							const newBuffer = currentBuffer
+								? `${currentBuffer} ${currentPrediction}`
+								: currentPrediction;
+							console.log(
+								`Adding to buffer: "${currentPrediction}" -> Buffer: "${newBuffer}"`
+							);
+							return newBuffer;
+						}
+						return currentBuffer;
+					});
 					stableRef.current.ticks = 0;
 				}
 			} else {
 				stableRef.current.lastPrediction = currentPrediction;
 				stableRef.current.ticks = 1;
+				console.log(`New prediction detected: ${currentPrediction}`);
 			}
 		} else {
 			stableRef.current.lastPrediction = null;
@@ -92,13 +109,20 @@ export function useHandSignPrediction(
 		}
 
 		tf.dispose([input, output]);
-	}, [model, labelMap, buffer, detecting, webcamRef]);
+	}, [model, labelMap, detecting, webcamRef]);
 
 	const clearBuffer = useCallback(() => {
 		setBuffer("");
 		stableRef.current.lastPrediction = null;
 		stableRef.current.ticks = 0;
 	}, []);
+
+	useEffect(() => {
+		if (Object.keys(labelMap).length > 0) {
+			console.log("Label map received:", labelMap);
+			console.log("Available labels:", Object.values(labelMap));
+		}
+	}, [labelMap]);
 
 	useEffect(() => {
 		if (!model) return;

@@ -120,7 +120,7 @@ export const WebcamSection = forwardRef<Webcam, WebcamSectionProps>(
 
 						<Webcam
 							ref={ref}
-							className="w-full h-full object-cover relative z-10 tour-webcam"
+							className="w-full h-full object-cover tour-webcam"
 							width={256}
 							height={256}
 							mirrored
@@ -135,16 +135,6 @@ export const WebcamSection = forwardRef<Webcam, WebcamSectionProps>(
 							}}
 							aria-label="Webcam preview"
 						/>
-
-						<div className="absolute inset-0 z-20 pointer-events-none flex items-center justify-center">
-							<div className="w-48 h-48 border-2 border-white/30 rounded-lg flex items-center justify-center">
-								<span className="text-white/60 text-xs font-medium text-center">
-									Position hand here
-									<br />
-									Fill the frame
-								</span>
-							</div>
-						</div>
 
 						<div className="absolute top-4 right-4 z-30">
 							<div

@@ -9,53 +9,88 @@ interface UseMLModelReturn {
 	setError: (error: string) => void;
 }
 
+class RescalingLayer extends tf.layers.Layer {
+	private scale: number;
+	private offset: number;
+
+	constructor(args: any) {
+		super(args);
+		this.scale = args.scale || 1.0;
+		this.offset = args.offset || 0.0;
+	}
+
+	call(inputs: tf.Tensor | tf.Tensor[]): tf.Tensor | tf.Tensor[] {
+		return tf.tidy(() => {
+			const input = Array.isArray(inputs) ? inputs[0] : inputs;
+			return tf.add(tf.mul(input, this.scale), this.offset);
+		});
+	}
+
+	getClassName() {
+		return "Rescaling";
+	}
+
+	static get className() {
+		return "Rescaling";
+	}
+}
+
 export function useMLModel(): UseMLModelReturn {
 	const [model, setModel] = useState<tf.LayersModel | null>(null);
 	const [labelMap, setLabelMap] = useState<Record<number, string>>({});
 	const [error, setError] = useState("");
 
 	useEffect(() => {
-		let mounted = true;
-		(async () => {
+		const loadModel = async () => {
 			try {
 				await tf.setBackend("webgl");
 				await tf.ready();
-				const m = await tf.loadLayersModel(URL.MODEL);
-				if (!mounted) return;
-				setModel(m);
-				tf.tidy(() => m.predict(tf.zeros([1, 256, 256, 3])) as tf.Tensor);
-			} catch (e) {
-				console.error("Model load failed", e);
+
+				try {
+					tf.serialization.registerClass(RescalingLayer);
+				} catch (e) {
+					console.log(
+						"Rescaling layer already registered or registration failed:",
+						e
+					);
+				}
+
+				const loadedModel = await tf.loadLayersModel(URL.MODEL);
+				setModel(loadedModel);
+				console.log("Model loaded");
+
+				tf.tidy(
+					() => loadedModel.predict(tf.zeros([1, 256, 256, 3])) as tf.Tensor
+				);
+			} catch (err) {
+				console.error("Error loading model:", err);
 				setError("Failed to load TFJS model");
 			}
-		})();
-		return () => {
-			mounted = false;
 		};
+		loadModel();
 	}, []);
 
 	useEffect(() => {
-		let mounted = true;
-		(async () => {
+		const loadLabels = async () => {
 			try {
 				const res = await fetch(URL.LABELS);
-				const mapping = (await res.json()) as Record<string, number>;
-				const flipped = Object.entries(mapping).reduce<Record<number, string>>(
+				const data = (await res.json()) as Record<string, number>;
+
+				const flipped = Object.entries(data).reduce<Record<number, string>>(
 					(acc, [label, idx]) => {
 						acc[idx] = label;
 						return acc;
 					},
 					{}
 				);
-				if (mounted) setLabelMap(flipped);
-			} catch (e) {
-				console.error("Labels load failed", e);
+				setLabelMap(flipped);
+				console.log("Label map loaded:", flipped);
+			} catch (err) {
+				console.error("Failed to load label map:", err);
 				setLabelMap({});
 			}
-		})();
-		return () => {
-			mounted = false;
 		};
+		loadLabels();
 	}, []);
 
 	return { model, labelMap, error, setError };

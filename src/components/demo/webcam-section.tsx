@@ -117,8 +117,8 @@ export const WebcamSection = forwardRef<Webcam, WebcamSectionProps>(
 						height={256}
 						mirrored
 						videoConstraints={{
-							width: 1280,
-							height: 720,
+							width: 256,
+							height: 256,
 							facingMode: "user",
 						}}
 						aria-label="Webcam preview"

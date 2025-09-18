@@ -7,6 +7,7 @@ import { BufferSection } from "./buffer-section";
 import { PhrasePlayer } from "./phrase-player";
 import { TourProvider } from "./tour-provider";
 import { ErrorDisplay } from "./error-display";
+import { TranslationResponseDisplay } from "./translation-response";
 
 import { useMLModel } from "~/hooks/use-ml-model.hook";
 import { useHandSignPrediction } from "~/hooks/use-hand-sign-prediction.hook";
@@ -32,7 +33,14 @@ export function HandSignPlayer() {
 
 	const { runTour, startTour, endTour } = useTour(!!model);
 
-	const { submitFormAnswer } = useFormAnswer();
+	const {
+		submitFormAnswer,
+		isLoading: isTranslating,
+		error: translationError,
+		translationResponse,
+		showTranslation,
+		clearTranslation,
+	} = useFormAnswer();
 
 	const onStop = useCallback(async () => {
 		const text = buffer.trim();
@@ -91,9 +99,13 @@ export function HandSignPlayer() {
 						onClearBuffer={clearBuffer}
 					/>
 
-					<BufferSection buffer={buffer} onTranslate={onStop} />
+					<BufferSection
+						buffer={buffer}
+						onTranslate={onStop}
+						isTranslating={isTranslating}
+					/>
 
-					<ErrorDisplay error={error} />
+					<ErrorDisplay error={error || translationError} />
 				</div>
 
 				<div className="space-y-4">
@@ -109,6 +121,34 @@ export function HandSignPlayer() {
 					/>
 				</div>
 			</div>
+
+			{/* Translation Response Display */}
+			{showTranslation && (
+				<div className="mt-8">
+					<div className="flex justify-between items-center mb-4">
+						<h2
+							className="text-xl font-semibold"
+							style={{ color: "var(--color-ink)" }}
+						>
+							Translation Results
+						</h2>
+						<button
+							onClick={clearTranslation}
+							className="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+							style={{
+								backgroundColor: "var(--color-brand-200)",
+								color: "var(--color-ink)",
+							}}
+						>
+							Clear Results
+						</button>
+					</div>
+					<TranslationResponseDisplay
+						response={translationResponse}
+						isVisible={showTranslation}
+					/>
+				</div>
+			)}
 		</section>
 	);
 }

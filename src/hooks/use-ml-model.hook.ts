@@ -19,47 +19,23 @@ export function useMLModel(): UseMLModelReturn {
 			try {
 				console.log("Loading Teachable Machine model...");
 
-				const modelResponse = await fetch(URL.MODEL);
-				if (!modelResponse.ok) {
-					throw new Error(`Model file not found: ${URL.MODEL}`);
-				}
+				const loadedModel = await tmImage.load(URL.MODEL, URL.METADATA);
 
-				const loadedModel = await tmImage.load(URL.MODEL, URL.WEIGHTS);
 				setModel(loadedModel);
 				console.log("Teachable Machine model loaded successfully");
 
-				try {
-					const metadataResponse = await fetch(URL.METADATA);
-					if (!metadataResponse.ok) {
-						throw new Error("Metadata file not found");
-					}
+				const metadataResponse = await fetch(URL.METADATA);
+				if (!metadataResponse.ok) throw new Error("Metadata file not found");
 
-					const metadata = await metadataResponse.json();
+				const metadata = await metadataResponse.json();
+				const labels: string[] = metadata?.labels ?? [];
+				const map: Record<number, string> = {};
+				labels.length
+					? labels.forEach((l, i) => (map[i] = l))
+					: Array.from({ length: 6 }, (_, i) => (map[i] = `Class ${i}`));
 
-					const labelMapping: Record<number, string> = {};
-					if (metadata && metadata.labels) {
-						metadata.labels.forEach((label: string, index: number) => {
-							labelMapping[index] = label;
-						});
-					} else {
-						for (let i = 0; i < 6; i++) {
-							labelMapping[i] = `Class ${i}`;
-						}
-					}
-					setLabelMap(labelMapping);
-					console.log("Label map loaded:", labelMapping);
-				} catch (metadataErr) {
-					console.warn(
-						"Could not load metadata, using default labels:",
-						metadataErr
-					);
-
-					const labelMapping: Record<number, string> = {};
-					for (let i = 0; i < 6; i++) {
-						labelMapping[i] = `Class ${i}`;
-					}
-					setLabelMap(labelMapping);
-				}
+				setLabelMap(map);
+				console.log("Label map loaded:", map);
 			} catch (err) {
 				console.error("Error loading Teachable Machine model:", err);
 				setError(

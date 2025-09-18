@@ -32,12 +32,10 @@ export function HandSignPlayer() {
 
 	const { runTour, startTour, endTour } = useTour(!!model);
 
-	const { isLoading: formAnswerLoading, submitFormAnswer } = useFormAnswer();
+	const { submitFormAnswer } = useFormAnswer();
 
 	const onStop = useCallback(async () => {
 		const text = buffer.trim();
-
-		if (!formAnswerLoading) return;
 
 		try {
 			await submitFormAnswer(`${text} STOP`);
@@ -45,7 +43,7 @@ export function HandSignPlayer() {
 			console.error("Form answer submission failed", e);
 			setError("Form answer submission failed");
 		}
-	}, [buffer, setError]);
+	}, [buffer, submitFormAnswer, setError]);
 
 	const onToggleDetection = useCallback(() => {
 		setDetecting(!detecting);

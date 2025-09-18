@@ -7,8 +7,9 @@ export const PHRASES = [
 ];
 
 export const URL = {
-	MODEL: "/models/tfjs-model/model.json",
-	LABELS: "/models/tfjs-model/label_mapping.json",
+	MODEL: "/models/teachable-machine/model.json",
+	WEIGHTS: "/models/teachable-machine/weights.bin",
+	METADATA: "/models/teachable-machine/metadata.json",
 };
 
 export const BONES = [

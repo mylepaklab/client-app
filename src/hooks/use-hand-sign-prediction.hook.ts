@@ -18,18 +18,6 @@ interface UseHandSignPredictionReturn {
 	setBuffer: (buffer: string) => void;
 }
 
-function createImageFromVideo(video: HTMLVideoElement): HTMLCanvasElement {
-	const canvas = document.createElement("canvas");
-	const ctx = canvas.getContext("2d")!;
-
-	canvas.width = video.videoWidth;
-	canvas.height = video.videoHeight;
-
-	ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-	return canvas;
-}
-
 export function useHandSignPrediction(
 	webcamRef: React.RefObject<Webcam>,
 	model: tmImage.CustomMobileNet | null,
@@ -59,9 +47,7 @@ export function useHandSignPrediction(
 		isProcessing.current = true;
 
 		try {
-			const canvas = createImageFromVideo(video);
-
-			const predictions = await model.predict(canvas);
+			const predictions = await model.predict(video);
 
 			if (predictions && predictions.length > 0) {
 				let topIndex = 0;

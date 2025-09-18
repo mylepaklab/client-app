@@ -258,7 +258,7 @@ export function TranslationResponseDisplay({
 									color: "var(--color-brand-700)",
 								}}
 							>
-								📋 Copy Text
+								Copy Text
 							</button>
 						</div>
 					</div>

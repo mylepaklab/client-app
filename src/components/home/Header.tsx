@@ -8,7 +8,7 @@ const NAV_ITEMS: NavItem[] = [
 	{ label: "Problem", href: "#problem" },
 	{ label: "Impact", href: "#impact" },
 	{ label: "How it works", href: "#how-it-works" },
-	{ label: "Fit", href: "#fit" },
+	{ label: "Why This Matters", href: "#why" },
 	{ label: "Evidence", href: "#evidence" },
 	{ label: "Team", href: "#team" },
 	{ label: "FAQ", href: "#faq" },
@@ -146,11 +146,6 @@ export function Header() {
 								>
 									Open live demo
 								</a>
-							</div>
-							<div className="mt-3 px-2">
-								<span className="bg-gradient-to-r from-brand-600 to-brand-700 text-white text-xs px-3 py-1 rounded-full font-medium shadow-sm">
-									SEA Developer Challenge
-								</span>
 							</div>
 						</nav>
 					</motion.div>

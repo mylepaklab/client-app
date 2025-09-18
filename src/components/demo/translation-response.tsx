@@ -32,13 +32,17 @@ export function TranslationResponseDisplay({
 	const parseTranslations = (translatedText: string): LanguageTranslation[] => {
 		const translations: LanguageTranslation[] = [];
 
+		const removeStopWords = (text: string): string => {
+			return text.replace(/\s+(Stop|STOP)\.?$/gi, "").trim();
+		};
+
 		const malayMatch = translatedText.match(
 			/Malay:\s*\n\s*(.*?)(?=\n\n|Thai:|$)/s
 		);
 		if (malayMatch) {
 			translations.push({
 				language: "Malay",
-				text: malayMatch[1].trim(),
+				text: removeStopWords(malayMatch[1].trim()),
 				flag: "🇲🇾",
 				code: "ms",
 			});
@@ -50,7 +54,7 @@ export function TranslationResponseDisplay({
 		if (thaiMatch) {
 			translations.push({
 				language: "Thai",
-				text: thaiMatch[1].trim(),
+				text: removeStopWords(thaiMatch[1].trim()),
 				flag: "🇹🇭",
 				code: "th",
 			});
@@ -60,7 +64,7 @@ export function TranslationResponseDisplay({
 		if (vietnameseMatch) {
 			translations.push({
 				language: "Vietnamese",
-				text: vietnameseMatch[1].trim(),
+				text: removeStopWords(vietnameseMatch[1].trim()),
 				flag: "🇻🇳",
 				code: "vi",
 			});
@@ -71,11 +75,17 @@ export function TranslationResponseDisplay({
 
 	const translations = response ? parseTranslations(response.translated) : [];
 
+	const cleanOriginalText = (text: string): string => {
+		return text
+			.replace(/\s+(Stop|STOP)\.?$/gi, "")
+			.replace(/\s+(Stop|STOP)\s*$/gi, "")
+			.trim();
+	};
+
 	useEffect(() => {
 		if (isVisible && translations.length > 0) {
 			setAnimations(new Array(translations.length).fill(false));
 
-			// Stagger animations
 			translations.forEach((_, index) => {
 				setTimeout(() => {
 					setAnimations((prev) => {
@@ -109,34 +119,56 @@ export function TranslationResponseDisplay({
 					className="inline-flex items-center gap-2 px-4 py-2 rounded-full"
 					style={{ backgroundColor: "var(--color-brand-100)" }}
 				>
-					<span className="text-2xl">🌐</span>
 					<span
 						className="font-semibold text-lg"
 						style={{ color: "var(--color-ink)" }}
 					>
-						Translation Complete
+						Translation Results
 					</span>
 				</div>
 
-				<div
-					className="p-4 rounded-lg border-2 border-dashed"
-					style={{
-						borderColor: "var(--color-brand-200)",
-						backgroundColor: "var(--color-surface)",
-					}}
-				>
-					<p
-						className="text-sm font-medium"
-						style={{ color: "var(--color-brand-700)" }}
+				<div className="space-y-4">
+					<div
+						className="p-4 rounded-lg border-2 border-dashed"
+						style={{
+							borderColor: "var(--color-brand-200)",
+							backgroundColor: "var(--color-surface)",
+						}}
 					>
-						Original Text:
-					</p>
-					<p
-						className="text-lg font-medium mt-1"
-						style={{ color: "var(--color-ink)" }}
+						<p
+							className="text-sm font-medium"
+							style={{ color: "var(--color-brand-700)" }}
+						>
+							Original Text:
+						</p>
+						<p
+							className="text-lg font-medium mt-1"
+							style={{ color: "var(--color-ink)" }}
+						>
+							"{cleanOriginalText(response.original)}"
+						</p>
+					</div>
+
+					<div
+						className="p-4 rounded-lg border-2 border-solid"
+						style={{
+							borderColor: "var(--color-brand-300)",
+							backgroundColor: "var(--color-brand-50)",
+						}}
 					>
-						"{response.original}"
-					</p>
+						<p
+							className="text-sm font-medium mb-2"
+							style={{ color: "var(--color-brand-700)" }}
+						>
+							Complete Translation:
+						</p>
+						<div
+							className="text-sm leading-relaxed whitespace-pre-line"
+							style={{ color: "var(--color-ink)" }}
+						>
+							{response.translated}
+						</div>
+					</div>
 				</div>
 
 				<div className="flex justify-center">
@@ -237,7 +269,7 @@ export function TranslationResponseDisplay({
 									color: "var(--color-brand-700)",
 								}}
 							>
-								📋 Copy Text
+								Copy Text
 							</button>
 						</div>
 					</div>

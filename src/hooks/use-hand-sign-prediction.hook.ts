@@ -18,11 +18,26 @@ interface UseHandSignPredictionReturn {
 	setBuffer: (buffer: string) => void;
 }
 
-function softmax(logits: number[]): number[] {
-	const maxLogit = Math.max(...logits);
-	const scores = logits.map((logit) => Math.exp(logit - maxLogit));
-	const sum = scores.reduce((a, b) => a + b, 0);
-	return scores.map((score) => score / sum);
+function toCenterCropTensor(video: HTMLVideoElement, size = 256) {
+	const anyFn = toCenterCropTensor as any;
+	const canvas: HTMLCanvasElement =
+		anyFn._canvas || (anyFn._canvas = document.createElement("canvas"));
+	const ctx: CanvasRenderingContext2D =
+		anyFn._ctx || (anyFn._ctx = canvas.getContext("2d")!);
+
+	const s = Math.min(video.videoWidth, video.videoHeight);
+	const sx = (video.videoWidth - s) / 2;
+	const sy = (video.videoHeight - s) / 2;
+
+	canvas.width = size;
+	canvas.height = size;
+
+	ctx.fillStyle = "black";
+	ctx.fillRect(0, 0, size, size);
+
+	ctx.drawImage(video, sx, sy, s, s, 0, 0, size, size);
+
+	return tf.browser.fromPixels(canvas).toFloat().div(255).expandDims(0);
 }
 
 export function useHandSignPrediction(
@@ -35,6 +50,7 @@ export function useHandSignPrediction(
 	const [detecting, setDetecting] = useState(true);
 
 	const isProcessing = useRef(false);
+	const checkedShapeRef = useRef(false);
 
 	const stableRef = useRef<{ lastPrediction: string | null; ticks: number }>({
 		lastPrediction: null,
@@ -43,112 +59,87 @@ export function useHandSignPrediction(
 
 	const CONFIDENCE_THRESHOLD = 0.3;
 	const REQUIRED_TICKS = 2;
+	const INPUT_SIZE = 256;
 
 	const predict = useCallback(async () => {
 		if (!detecting || !webcamRef.current || !model || isProcessing.current)
 			return;
 
-		const video = webcamRef.current.video;
+		const video = webcamRef.current.video as HTMLVideoElement | null;
 		if (!video || video.readyState !== 4) return;
 
 		isProcessing.current = true;
 
 		let input: tf.Tensor | null = null;
-		let output: tf.Tensor | null = null;
+		let logits: tf.Tensor | null = null;
+		let probs: tf.Tensor | null = null;
 
 		try {
-			input = tf.tidy(() => {
-				return tf.browser
-					.fromPixels(video)
-					.resizeBilinear([256, 256])
-					.toFloat()
-					.div(255) // Normalize input values to [0,1]
-					.expandDims(0); // shape: [1, 256, 256, 3]
-			});
+			input = toCenterCropTensor(video, INPUT_SIZE); // [1, 256, 256, 3]
 
-			output = model.predict(input) as tf.Tensor;
-			const logits = await output.data();
+			logits = model.predict(input) as tf.Tensor;
 
-			const probabilities = softmax(Array.from(logits));
+			if (!checkedShapeRef.current) {
+				const outShape = logits.shape;
+				const numClasses = outShape[outShape.length - 1] ?? 0;
+				const labelCount = Object.keys(labelMap).length;
+				if (numClasses !== labelCount) {
+					console.error(
+						`Model classes ${numClasses} do not match labels ${labelCount}. Fix either the model or the label mapping`
+					);
+					isProcessing.current = false;
+					return;
+				}
+				checkedShapeRef.current = true;
+			}
 
-			const topIndices = probabilities
-				.map((prob, index) => ({ prob, index }))
-				.sort((a, b) => b.prob - a.prob)
-				.slice(0, 3);
+			probs = tf.softmax(logits);
+			const arr = await probs.data();
 
-			console.log(
-				"Top 3 predictions:",
-				topIndices.map((item) => ({
-					class: labelMap[item.index] || `Class ${item.index}`,
-					probability: (item.prob * 100).toFixed(1) + "%",
-				}))
-			);
-
-			const topIndex = topIndices[0].index;
-			const topConfidence = topIndices[0].prob;
+			let topIndex = 0;
+			let topProb = -Infinity;
+			for (let i = 0; i < arr.length; i++) {
+				const p = arr[i];
+				if (p > topProb) {
+					topProb = p;
+					topIndex = i;
+				}
+			}
 			const className = labelMap[topIndex] || `Class ${topIndex}`;
 
-			setPrediction({
-				index: topIndex,
-				name: className,
-				prob: topConfidence,
-			});
+			setPrediction({ index: topIndex, name: className, prob: topProb });
 
-			if (topConfidence > CONFIDENCE_THRESHOLD) {
-				const currentPrediction = className;
-				console.log(
-					`High confidence prediction: ${currentPrediction} (${(
-						topConfidence * 100
-					).toFixed(1)}%)`
-				);
+			if (topProb > CONFIDENCE_THRESHOLD) {
+				const current = className;
 
-				if (stableRef.current.lastPrediction === currentPrediction) {
+				if (stableRef.current.lastPrediction === current) {
 					stableRef.current.ticks += 1;
-					console.log(`Stable ticks: ${stableRef.current.ticks}`);
 
 					if (stableRef.current.ticks >= REQUIRED_TICKS) {
-						setBuffer((currentBuffer) => {
-							const bufferWords = currentBuffer
-								.trim()
-								.split(" ")
-								.filter((w) => w.length > 0);
-							const lastWord = bufferWords[bufferWords.length - 1];
-
-							if (
-								lastWord !== currentPrediction &&
-								currentPrediction.length > 0
-							) {
-								const newBuffer = currentBuffer
-									? `${currentBuffer} ${currentPrediction}`
-									: currentPrediction;
-								console.log(
-									`Adding to buffer: "${currentPrediction}" -> Buffer: "${newBuffer}"`
-								);
-								return newBuffer;
+						setBuffer((prev) => {
+							const words = prev.trim().split(" ").filter(Boolean);
+							const last = words[words.length - 1];
+							if (last !== current && current.length > 0) {
+								return prev ? `${prev} ${current}` : current;
 							}
-							return currentBuffer;
+							return prev;
 						});
 						stableRef.current.ticks = 0;
 					}
 				} else {
-					stableRef.current.lastPrediction = currentPrediction;
+					stableRef.current.lastPrediction = current;
 					stableRef.current.ticks = 1;
-					console.log(`New prediction detected: ${currentPrediction}`);
 				}
 			} else {
 				stableRef.current.lastPrediction = null;
 				stableRef.current.ticks = 0;
 			}
-		} catch (error) {
-			console.error("Prediction error:", error);
+		} catch (err) {
+			console.error("Prediction error:", err);
 		} finally {
-			if (input) {
-				input.dispose();
-			}
-			if (output) {
-				output.dispose();
-			}
-
+			if (input) input.dispose();
+			if (logits) logits.dispose();
+			if (probs) probs.dispose();
 			isProcessing.current = false;
 		}
 	}, [model, labelMap, detecting, webcamRef]);
@@ -157,23 +148,14 @@ export function useHandSignPrediction(
 		setBuffer("");
 		stableRef.current.lastPrediction = null;
 		stableRef.current.ticks = 0;
-		isProcessing.current = false; // Reset processing state
+		isProcessing.current = false;
 	}, []);
 
 	useEffect(() => {
-		if (Object.keys(labelMap).length > 0) {
-			console.log("Label map received:", labelMap);
-			console.log("Available labels:", Object.values(labelMap));
-		}
-	}, [labelMap]);
-
-	useEffect(() => {
 		if (!model) return;
-
 		const interval = setInterval(() => {
 			predict();
 		}, PREDICT_MS);
-
 		return () => clearInterval(interval);
 	}, [model, predict]);
 
